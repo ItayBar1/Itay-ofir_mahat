@@ -4,7 +4,6 @@ import {
   Calendar, 
   Users, 
   CreditCard, 
-  Image as ImageIcon, 
   Settings,
   LogOut
 } from 'lucide-react';
@@ -20,7 +19,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'schedule', label: 'Class Schedule', icon: Calendar },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'payments', label: 'Payments', icon: CreditCard },
-    { id: 'marketing', label: 'Marketing AI', icon: ImageIcon }, // New feature
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

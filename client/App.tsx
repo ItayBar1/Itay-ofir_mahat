@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
-import { ImageGenerator } from './components/ImageGenerator';
 import { StudentManagement } from './components/StudentManagement';
 import { ClassSchedule } from './components/ClassSchedule';
 
@@ -16,8 +15,6 @@ function App() {
         return <StudentManagement />;
       case 'schedule':
         return <ClassSchedule />;
-      case 'marketing':
-        return <ImageGenerator />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
