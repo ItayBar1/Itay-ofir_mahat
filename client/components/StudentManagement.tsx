@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -8,56 +8,133 @@ import {
   Plus,
   ArrowUpDown,
   Download,
+  ChevronLeft,
+  ChevronRight,
+  Loader2
 } from "lucide-react";
-import { Student, UserRole } from "../types/types";
+import { Student, UserRole, EnrollmentStatus } from "../types/types";
 import { supabase } from '../services/supabaseClient';
-import { Database } from '../types/database'; // ייבוא הטיפוסים של ה-DB
 
-// טיפוס עזר לשורה בטבלת המשתמשים
-type UserRow = Database['public']['Tables']['users']['Row'];
+// מילון תרגום לסטטוסים
+const STATUS_TRANSLATION: Record<EnrollmentStatus, string> = {
+  'Active': 'פעיל',
+  'Pending': 'ממתין',
+  'Suspended': 'מושעה'
+};
+
+const ITEMS_PER_PAGE = 10;
 
 export const StudentManagement: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [classList, setClassList] = useState<string[]>([]);
+  
+  // State עבור דפדוף וחיפוש
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClass, setSelectedClass] = useState("All");
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof Student;
-    direction: "asc" | "desc";
-  } | null>(null);
+  const [selectedClass, setSelectedClass] = useState("הכל");
+  const [sortConfig, setSortConfig] = useState<{ key: string; ascending: boolean }>({
+    key: 'created_at',
+    ascending: false
+  });
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+  // טעינת רשימת השיעורים (עבור ה-Dropdown)
+  const fetchClassesList = async () => {
+    const { data } = await supabase
+      .from('classes')
+      .select('name')
+      .eq('is_active', true)
+      .order('name');
+    
+    if (data) {
+      // תיקון השגיאה: הוספת טיפוס מפורש (c: any)
+      setClassList(["הכל", ...data.map((c: any) => c.name)]);
+    }
+  };
 
-  const fetchStudents = async () => {
+// פונקציית הטעינה הראשית - צד שרת
+  const fetchStudents = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      let query;
+
+      // בניית השאילתה בהתאם לסינון
+      if (selectedClass && selectedClass !== "הכל") {
+        // מצב סינון: שימוש ב-!inner כדי להכריח את ה-DB להחזיר רק תלמידים שרשומים לשיעור הספציפי
+        query = supabase
+          .from('users')
+          .select(`
+            id, full_name, email, phone_number, created_at, role, status,
+            enrollments!inner (
+              status,
+              classes!inner ( name )
+            )
+          `, { count: 'exact' })
+          .eq('role', 'STUDENT')
+          .eq('enrollments.status', 'ACTIVE') // מוודאים שההרשמה פעילה
+          .eq('enrollments.classes.name', selectedClass); // הסינון לפי שם השיעור
+      } else {
+        // מצב רגיל (ללא סינון שיעור): שליפה רגילה (Left Join)
+        query = supabase
+          .from('users')
+          .select(`
+            id, full_name, email, phone_number, created_at, role, status,
+            enrollments (
+              status,
+              classes ( name )
+            )
+          `, { count: 'exact' })
+          .eq('role', 'STUDENT');
+      }
+
+      // הוספת חיפוש טקסט חופשי (שם או אימייל) - עובד בשני המצבים
+      if (searchTerm) {
+        query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      }
+
+      // מיון
+      const sortColumn = sortConfig.key === 'joinDate' ? 'created_at' : 
+                         sortConfig.key === 'name' ? 'full_name' : 'created_at';
       
-      // הוספת .returns<UserRow[]>() פותרת את שגיאת ה-never
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'STUDENT')
-        .returns<UserRow[]>(); 
+      query = query.order(sortColumn, { ascending: sortConfig.ascending });
+
+      // דפדוף (Pagination)
+      const from = page * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+      query = query.range(from, to);
+
+      const { data, count, error } = await query;
 
       if (error) throw error;
+      
+      if (count !== null) setTotalCount(count);
 
       if (data) {
-        const formattedStudents: Student[] = data.map((user) => ({
+        const formattedStudents: Student[] = data.map((user: any) => {
+          // מציאת השיעור הפעיל לתצוגה
+          // במצב סינון, המערך יכיל רק את השיעור הרלוונטי. במצב רגיל, נחפש Active.
+          const activeEnrollment = user.enrollments?.find((e: any) => e.status === 'ACTIVE' || (selectedClass !== "הכל"));
+          const className = activeEnrollment?.classes?.name || 'לא רשום';
+
+          let status: EnrollmentStatus = 'Pending';
+          if (user.status === 'ACTIVE') status = 'Active';
+          else if (user.status === 'SUSPENDED') status = 'Suspended';
+          else if (user.status === 'INACTIVE') status = 'Pending';
+
+          return {
             id: user.id,
-            name: user.full_name || 'Unknown Name', // טיפול בערכי null
-            role: user.role as UserRole, // המרה לטיפוס המתאים בקלאיינט
+            name: user.full_name || 'שם לא ידוע',
+            role: user.role as UserRole,
             avatar: user.full_name ? user.full_name[0].toUpperCase() : '?',
             email: user.email,
             phone: user.phone_number || '',
-            enrolledClass: 'Unknown', // לוגיקה זמנית עד לחיבור טבלת הרשמות
-            status: (user.status === 'ACTIVE' || user.status === 'INACTIVE' || user.status === 'SUSPENDED') 
-              ? (user.status === 'ACTIVE' ? 'Active' : user.status === 'SUSPENDED' ? 'Suspended' : 'Pending')
-              : 'Pending', // המרה מטיפוסי DB לטיפוסי UI
+            enrolledClass: className,
+            status: status,
             joinDate: user.created_at
-        }));
+          };
+        });
+          
         setStudents(formattedStudents);
       }
     } catch (error) {
@@ -65,111 +142,65 @@ export const StudentManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, searchTerm, sortConfig, selectedClass]);
 
-  // שאר הקוד נשאר ללא שינוי...
-  
-  const classes = useMemo(() => {
-    const uniqueClasses = Array.from(
-      new Set(students.map((s) => s.enrolledClass))
-    );
-    return ["All", ...uniqueClasses.sort()];
-  }, [students]);
+  useEffect(() => {
+    fetchClassesList();
+  }, []);
 
-  const processedStudents = useMemo(() => {
-    let filtered = students.filter((student) => {
-      const matchesSearch =
-        student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesClass =
-        selectedClass === "All" || student.enrolledClass === selectedClass;
-      return matchesSearch && matchesClass;
-    });
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
 
-    if (sortConfig) {
-      filtered.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key])
-          return sortConfig.direction === "asc" ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key])
-          return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [students, searchTerm, selectedClass, sortConfig]);
-
-  const handleSort = (key: keyof Student) => {
-    setSortConfig((current) => ({
+  // טיפול במיון
+  const handleSort = (key: string) => {
+    setSortConfig(current => ({
       key,
-      direction:
-        current?.key === key && current.direction === "asc" ? "desc" : "asc",
+      ascending: current.key === key ? !current.ascending : true
     }));
   };
 
   const handleExportCSV = () => {
-    const headers = [
-      "ID",
-      "Name",
-      "Class",
-      "Status",
-      "Email",
-      "Phone",
-      "Join Date",
-    ];
-
-    const rows = processedStudents.map((student) => [
-      student.id,
-      student.name,
-      student.enrolledClass,
-      student.status,
-      student.email,
-      student.phone,
-      student.joinDate,
+    const headers = ["ID", "שם", "שיעור", "סטטוס", "אימייל", "טלפון", "תאריך הצטרפות"];
+    const rows = students.map((student) => [
+      student.id, student.name, student.enrolledClass, STATUS_TRANSLATION[student.status], student.email, student.phone, student.joinDate,
     ]);
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
-
+    const csvContent = [headers.join(","), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `students_export_${new Date().toISOString().split("T")[0]}.csv`
-    );
-    link.style.visibility = "hidden";
+    link.setAttribute("download", `students_export_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  const getStatusColor = (status: EnrollmentStatus) => {
+    switch (status) {
+      case 'Active': return "bg-green-50 text-green-700 border-green-200";
+      case 'Pending': return "bg-yellow-50 text-yellow-700 border-yellow-200";
+      case 'Suspended': return "bg-red-50 text-red-700 border-red-200";
+      default: return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">
-            Student Management
-          </h2>
-          <p className="text-slate-500">
-            Manage enrollments and student details
-          </p>
+          <h2 className="text-2xl font-bold text-slate-800">ניהול תלמידים</h2>
+          <p className="text-slate-500">ניהול הרשמות ופרטי תלמידים ({totalCount} רשומות)</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
-          >
-            <Download size={16} />
-            Export CSV
+          <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all shadow-sm">
+            <Download size={16} /> ייצוא CSV
           </button>
           <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
-            <Plus size={16} />
-            Add Student
+            <Plus size={16} /> הוסף תלמיד
           </button>
         </div>
       </div>
@@ -177,33 +208,28 @@ export const StudentManagement: React.FC = () => {
       {/* Filters */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-96">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
-          />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
-            placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+            placeholder="חיפוש לפי שם או אימייל..."
+            className="w-full pr-10 pl-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
           />
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="flex items-center gap-2 text-slate-500 text-sm font-medium">
             <Filter size={16} />
-            <span>Filter by Class:</span>
+            <span>סינון לפי שיעור:</span>
           </div>
           <select
             className="px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
             value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
+            onChange={(e) => { setSelectedClass(e.target.value); setPage(0); }}
           >
-            {classes.map((c) => (
-              <option key={c} value={c}>
-                {c === "All" ? "All Classes" : c}
-              </option>
+            {classList.map((c) => (
+              <option key={c} value={c}>{c === "הכל" ? "כל השיעורים" : c}</option>
             ))}
           </select>
         </div>
@@ -212,143 +238,89 @@ export const StudentManagement: React.FC = () => {
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th
-                  onClick={() => handleSort("name")}
-                  className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 group"
-                >
-                  <div className="flex items-center gap-1">
-                    Student
-                    <ArrowUpDown
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
+                <th onClick={() => handleSort("name")} className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 group">
+                  <div className="flex items-center gap-1">תלמיד <ArrowUpDown size={12} className="opacity-50" /></div>
                 </th>
-                <th
-                  onClick={() => handleSort("enrolledClass")}
-                  className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 group"
-                >
-                  <div className="flex items-center gap-1">
-                    Class
-                    <ArrowUpDown
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">שיעור</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">סטטוס</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">פרטי קשר</th>
+                <th onClick={() => handleSort("joinDate")} className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 group">
+                  <div className="flex items-center gap-1">הצטרף <ArrowUpDown size={12} className="opacity-50" /></div>
                 </th>
-                <th
-                  onClick={() => handleSort("status")}
-                  className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 group"
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    <ArrowUpDown
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th
-                  onClick={() => handleSort("joinDate")}
-                  className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 group"
-                >
-                  <div className="flex items-center gap-1">
-                    Joined
-                    <ArrowUpDown
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
-                  Actions
-                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-left">פעולות</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {processedStudents.length > 0 ? (
-                processedStudents.map((student) => (
-                  <tr
-                    key={student.id}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
+              {loading ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500"><Loader2 className="animate-spin h-6 w-6 mx-auto mb-2" />טוען נתונים...</td></tr>
+              ) : students.length > 0 ? (
+                students.map((student) => (
+                  <tr key={student.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
                           {student.avatar}
                         </div>
-                        <div className="ml-4">
-                          <div className="font-medium text-slate-900">
-                            {student.name}
-                          </div>
-                          <div className="text-sm text-slate-500">
-                            ID: #{student.id.substring(0, 8)}
-                          </div>
+                        <div className="mr-4">
+                          <div className="font-medium text-slate-900">{student.name}</div>
+                          <div className="text-sm text-slate-500">#{student.id.substring(0, 6)}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {student.enrolledClass}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{student.enrolledClass}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${
-                          student.status === "Active"
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : student.status === "Pending"
-                            ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                            : "bg-red-50 text-red-700 border-red-200"
-                        }`}
-                      >
-                        {student.status}
+                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(student.status)}`}>
+                        {STATUS_TRANSLATION[student.status]}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Mail size={14} className="text-slate-400" />
-                          {student.email}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Phone size={14} className="text-slate-400" />
-                          {student.phone}
-                        </div>
+                        <div className="flex items-center gap-2 text-sm text-slate-600"><Mail size={14} className="text-slate-400" />{student.email}</div>
+                        <div className="flex items-center gap-2 text-sm text-slate-600"><Phone size={14} className="text-slate-400" />{student.phone}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(student.joinDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
-                        <MoreVertical size={18} />
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(student.joinDate).toLocaleDateString('he-IL')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
+                      <button className="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-slate-100 transition-colors"><MoreVertical size={18} /></button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-12 text-center text-slate-500"
-                  >
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="h-10 w-10 text-slate-300 mb-2" />
-                      <p className="font-medium">No students found</p>
-                      <p className="text-sm">
-                        Try adjusting your search or filters
-                      </p>
+                      <p className="font-medium">לא נמצאו תלמידים</p>
                     </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={16} /> הקודם
+            </button>
+            <span className="text-sm text-slate-500">
+              עמוד {page + 1} מתוך {totalPages || 1}
+            </span>
+            <button
+              onClick={() => setPage(p => (totalPages > p + 1 ? p + 1 : p))}
+              disabled={page + 1 >= totalPages}
+              className="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              הבא <ChevronLeft size={16} />
+            </button>
         </div>
       </div>
     </div>
