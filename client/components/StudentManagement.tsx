@@ -11,10 +11,6 @@ import {
 } from "lucide-react";
 import { Student, UserRole } from "../types/types";
 import { supabase } from '../services/supabaseClient';
-import { Database } from '../types/database'; // ייבוא הטיפוסים של ה-DB
-
-// טיפוס עזר לשורה בטבלת המשתמשים
-type UserRow = Database['public']['Tables']['users']['Row'];
 
 export const StudentManagement: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -35,29 +31,43 @@ export const StudentManagement: React.FC = () => {
     try {
       setLoading(true);
       
-      // הוספת .returns<UserRow[]>() פותרת את שגיאת ה-never
+      // שליפה של תלמידים יחד עם ההרשמות הפעילות שלהם והשיעורים הקשורים
+      // שים לב: אנחנו משתמשים ב-Inner Join או Left Join דרך הסינטקס של Supabase
       const { data, error } = await supabase
         .from('users')
-        .select('*')
-        .eq('role', 'STUDENT')
-        .returns<UserRow[]>(); 
+        .select(`
+          *,
+          enrollments (
+            status,
+            classes (
+              name
+            )
+          )
+        `)
+        .eq('role', 'STUDENT');
 
       if (error) throw error;
 
       if (data) {
-        const formattedStudents: Student[] = data.map((user) => ({
+        const formattedStudents: Student[] = data.map((user: any) => {
+          // מציאת הרשמה פעילה (אם יש) כדי להציג את שם השיעור
+          const activeEnrollment = user.enrollments?.find((e: any) => e.status === 'ACTIVE');
+          const className = activeEnrollment?.classes?.name || 'Not Enrolled';
+
+          return {
             id: user.id,
-            name: user.full_name || 'Unknown Name', // טיפול בערכי null
-            role: user.role as UserRole, // המרה לטיפוס המתאים בקלאיינט
+            name: user.full_name || 'Unknown Name',
+            role: user.role as UserRole,
             avatar: user.full_name ? user.full_name[0].toUpperCase() : '?',
             email: user.email,
             phone: user.phone_number || '',
-            enrolledClass: 'Unknown', // לוגיקה זמנית עד לחיבור טבלת הרשמות
+            enrolledClass: className, // כעת זה דינמי!
             status: (user.status === 'ACTIVE' || user.status === 'INACTIVE' || user.status === 'SUSPENDED') 
               ? (user.status === 'ACTIVE' ? 'Active' : user.status === 'SUSPENDED' ? 'Suspended' : 'Pending')
-              : 'Pending', // המרה מטיפוסי DB לטיפוסי UI
+              : 'Pending',
             joinDate: user.created_at
-        }));
+          };
+        });
         setStudents(formattedStudents);
       }
     } catch (error) {
@@ -67,13 +77,12 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
-  // שאר הקוד נשאר ללא שינוי...
-  
   const classes = useMemo(() => {
     const uniqueClasses = Array.from(
       new Set(students.map((s) => s.enrolledClass))
     );
-    return ["All", ...uniqueClasses.sort()];
+    // מסנן את "Not Enrolled" אם אתה לא רוצה שיופיע בפילטר, או משאיר
+    return ["All", ...uniqueClasses.filter(c => c !== 'Not Enrolled').sort()];
   }, [students]);
 
   const processedStudents = useMemo(() => {
@@ -81,8 +90,10 @@ export const StudentManagement: React.FC = () => {
       const matchesSearch =
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
       const matchesClass =
         selectedClass === "All" || student.enrolledClass === selectedClass;
+        
       return matchesSearch && matchesClass;
     });
 
@@ -146,6 +157,11 @@ export const StudentManagement: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (loading && students.length === 0) {
+     // הוספת מצב טעינה בסיסי אם אין נתונים
+     return <div className="p-8 text-center text-slate-500">Loading students...</div>;
+  }
 
   return (
     <div className="space-y-6">

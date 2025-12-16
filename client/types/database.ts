@@ -64,7 +64,7 @@ export interface Database {
           admin_id: string
           address: string | null
           city: string | null
-          coordinates: unknown | null // Point type in Postgres
+          coordinates: unknown | null
           contact_email: string | null
           contact_phone: string | null
           website_url: string | null
@@ -244,6 +244,118 @@ export interface Database {
           end_date?: string | null
           cancellation_reason?: string | null
           notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      payments: {
+        Row: {
+          id: string
+          studio_id: string
+          enrollment_id: string | null
+          student_id: string
+          instructor_id: string | null
+          amount_ils: number
+          currency: string | null
+          payment_method: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK' | 'CASH' | null
+          transzilla_transaction_id: string | null
+          status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | null
+          invoice_number: string | null
+          invoice_url: string | null
+          due_date: string
+          paid_date: string | null
+          refund_date: string | null
+          refund_reason: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          studio_id: string
+          enrollment_id?: string | null
+          student_id: string
+          instructor_id?: string | null
+          amount_ils: number
+          currency?: string | null
+          payment_method?: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK' | 'CASH' | null
+          transzilla_transaction_id?: string | null
+          status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | null
+          invoice_number?: string | null
+          invoice_url?: string | null
+          due_date: string
+          paid_date?: string | null
+          refund_date?: string | null
+          refund_reason?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          studio_id?: string
+          enrollment_id?: string | null
+          student_id?: string
+          instructor_id?: string | null
+          amount_ils?: number
+          currency?: string | null
+          payment_method?: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK' | 'CASH' | null
+          transzilla_transaction_id?: string | null
+          status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | null
+          invoice_number?: string | null
+          invoice_url?: string | null
+          due_date?: string
+          paid_date?: string | null
+          refund_date?: string | null
+          refund_reason?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      attendance: {
+        Row: {
+          id: string
+          studio_id: string
+          class_id: string
+          instructor_id: string
+          enrollment_id: string | null
+          student_id: string
+          session_date: string // YYYY-MM-DD format
+          status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | null
+          notes: string | null
+          recorded_at: string
+          recorded_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          studio_id: string
+          class_id: string
+          instructor_id: string
+          enrollment_id?: string | null
+          student_id: string
+          session_date: string
+          status?: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | null
+          notes?: string | null
+          recorded_at?: string
+          recorded_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          studio_id?: string
+          class_id?: string
+          instructor_id?: string
+          enrollment_id?: string | null
+          student_id?: string
+          session_date?: string
+          status?: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | null
+          notes?: string | null
+          recorded_at?: string
+          recorded_by?: string
           created_at?: string
           updated_at?: string
         }
