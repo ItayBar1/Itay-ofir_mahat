@@ -2,21 +2,27 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./services/supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
-import { Dashboard } from "./components/Dashboard"; // Admin Dashboard
-import { StudentDashboard } from "./components/student/StudentDashboard"; // Student Dashboard
+// ייבוא הקומפוננטות של המנהל
+import { Dashboard } from "./components/Dashboard";
 import { StudentManagement } from "./components/StudentManagement";
 import { ClassSchedule } from "./components/ClassSchedule";
+// ייבוא הקומפוננטות של המדריך (חדשות)
+import { InstructorDashboard } from "./components/instructor/InstructorDashboard";
+import { InstructorStudents } from "./components/instructor/InstructorStudents";
+import { InstructorSchedule } from "./components/instructor/InstructorSchedule";
+// ייבוא הקומפוננטות של הסטודנט
+import { StudentDashboard } from "./components/student/StudentDashboard";
+import { BrowseCourses } from "./components/student/BrowseCourses";
+
 import { AuthPage } from "./components/AuthPage";
 import { Loader2 } from "lucide-react";
 import { Payments } from "./components/Payments";
-import { BrowseCourses } from "./components/student/BrowseCourses";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
-  // שמירת התפקיד בסטייט לגישה נוחה
-  const [userRole, setUserRole] = useState<string>("STUDENT"); 
+  const [userRole, setUserRole] = useState<string>("STUDENT");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -27,9 +33,7 @@ function App() {
       setLoading(false);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user?.user_metadata?.role) {
         setUserRole(session.user.user_metadata.role);
@@ -41,58 +45,41 @@ function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUserRole("STUDENT"); // Reset role on logout
+    setUserRole("STUDENT");
   };
 
   const renderContent = () => {
-    // לוגיקת ניתוב לפי טאב ותפקיד
     switch (activeTab) {
       case "dashboard":
-        // הפרדה בין דאשבורד מנהל לדאשבורד סטודנט
         if (userRole === 'ADMIN') return <Dashboard />;
-        if (userRole === 'INSTRUCTOR') return <Dashboard />; // או ליצור InstructorDashboard בעתיד
+        if (userRole === 'INSTRUCTOR') return <InstructorDashboard />;
         return <StudentDashboard />;
         
       case "students":
-        // הגנה: סטודנט לא אמור לראות את זה
-        if (userRole === 'STUDENT') return <div>אין לך הרשאה לצפות בעמוד זה</div>;
-        return <StudentManagement />;
+        if (userRole === 'ADMIN') return <StudentManagement />;
+        if (userRole === 'INSTRUCTOR') return <InstructorStudents />;
+        return <div>אין הרשאה</div>;
         
       case "schedule":
-        // הגנה: לפי ה-PRD סטודנט רואה את הלו"ז שלו בדאשבורד, אבל אם רוצים לאפשר לו לראות לו"ז כללי:
-        // כרגע נחסום לפי האפיון ב-Sidebar, אבל נוסיף הגנה גם כאן
-        if (userRole === 'STUDENT') return <div>אין לך הרשאה לצפות בעמוד זה</div>;
-        return <ClassSchedule />;
+        if (userRole === 'ADMIN') return <ClassSchedule />;
+        if (userRole === 'INSTRUCTOR') return <InstructorSchedule />;
+        return <div>אין הרשאה</div>;
         
       case "payments":
-        if (userRole !== 'ADMIN') return <div>אין לך הרשאה לצפות בעמוד זה</div>;
-        return <Payments />;
+        if (userRole === 'ADMIN') return <Payments />;
+        return <div>אין הרשאה</div>;
         
       case "browse":
-        // דף לסטודנטים
-        return <BrowseCourses />;
+        if (userRole === 'STUDENT') return <BrowseCourses />;
+        return <div>אין הרשאה</div>;
         
       default:
-        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
-            <h2 className="text-2xl font-bold text-slate-300 mb-2">בקרוב...</h2>
-            <p>המודול {activeTab} נמצא כרגע בפיתוח.</p>
-          </div>
-        );
+        return <div>המודול בבנייה</div>;
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 text-indigo-600">
-        <Loader2 className="animate-spin w-10 h-10" />
-      </div>
-    );
-  }
-
-  if (!session) {
-    return <AuthPage />;
-  }
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600" /></div>;
+  if (!session) return <AuthPage />;
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans" dir="rtl">
@@ -101,27 +88,25 @@ function App() {
         setActiveTab={setActiveTab}
         // @ts-ignore
         onLogout={handleLogout}
-        userRole={userRole} // העברת התפקיד ל-Sidebar
+        userRole={userRole}
       />
-
       <main className="flex-1 mr-64 p-8">
         <header className="flex justify-end mb-8">
-          <div className="flex items-center gap-4">
+           {/* כותרת משתמש זהה לקוד הקודם */}
+           <div className="flex items-center gap-4">
             <div className="text-left">
               <p className="text-sm font-bold text-slate-700">
                 {session.user.user_metadata.full_name || "משתמש"}
               </p>
               <p className="text-xs text-slate-500 uppercase">
-                {userRole === 'ADMIN' ? 'מנהל מערכת' : 
-                 userRole === 'INSTRUCTOR' ? 'מדריך' : 'סטודנט'}
+                {userRole === 'ADMIN' ? 'מנהל מערכת' : userRole === 'INSTRUCTOR' ? 'מדריך' : 'סטודנט'}
               </p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm border-2 border-white shadow-sm cursor-pointer">
+            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
               {session.user.email?.[0].toUpperCase()}
             </div>
           </div>
         </header>
-
         <div className="max-w-7xl mx-auto animate-fadeIn">
           {renderContent()}
         </div>
