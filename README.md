@@ -52,29 +52,57 @@ Dynamic weekly timetable view:
 
 ## 📦 Installation & Setup
 
-1.  **Clone the repository**
-    ```bash
-    git clone <repository-url>
-    cd classly-studio-management
-    ```
+### Prerequisites
+- **Node.js 20+** and **npm** installed locally.
+- A Supabase project with URL and anonymous key available.
 
-2.  **Install dependencies**
-    ```bash
-    npm install
-    ```
+### 1) Clone the repository
+```bash
+git clone <repository-url>
+cd Classly-Studio_Management
+```
 
-3.  **Environment Configuration**
-    Create a `.env` file in the root directory (client folder) and add your Supabase credentials:
-    ```env
-    VITE_SUPABASE_URL=your_supabase_project_url
-    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-    ```
+### 2) Install dependencies
+Client and server are installed separately:
+```bash
+cd client
+npm install
 
-4.  **Run the development server**
-    ```bash
-    npm run dev
-    ```
-    The application will run on `http://localhost:3000` (or the port assigned by Vite).
+cd ../server
+npm install
+```
+
+### 3) Environment configuration
+Create environment files in each package:
+
+**Client (`client/.env`):**
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+**Server (`server/.env`):**
+```env
+PORT=5000
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+STRIPE_SECRET_KEY=your_stripe_secret_key
+```
+
+### 4) Run the apps
+- **Client:**
+  ```bash
+  cd client
+  npm run dev
+  ```
+  The Vite dev server runs on `http://localhost:5173` by default.
+
+- **Server:**
+  ```bash
+  cd server
+  npm run dev
+  ```
+  The API server listens on the port set in `server/.env` (defaults to `5000`).
 
 ## 📂 Project Structure
 
@@ -93,3 +121,10 @@ client/
 │   └── database.ts       # Database Schema types (Supabase generated)
 ├── App.tsx               # Main routing & Session management
 └── main.tsx              # Entry point
+server/
+├── src/
+│   ├── routes/           # Express route handlers
+│   ├── logger.ts         # Pino logger configuration
+│   └── index.ts          # Express app entry point
+├── package.json          # Server scripts & dependencies
+└── tsconfig.json         # Server TypeScript config
