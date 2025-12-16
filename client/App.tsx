@@ -14,13 +14,11 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    // בדיקת Session קיים
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // האזנה לשינויים בסטטוס ההתחברות
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -60,29 +58,27 @@ function App() {
     );
   }
 
-  // אם אין משתמש מחובר, הצג את עמוד ההתחברות
   if (!session) {
     return <AuthPage />;
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans" dir="ltr">
-      {/* הערה: הוספתי פרופ 'onLogout' ל-Sidebar. 
-         יש לעדכן את הקומפוננטה Sidebar כדי שתקבל ותשתמש בו בכפתור ה-Sign Out.
-      */}
+    // שינוי ל-rtl
+    <div className="flex min-h-screen bg-slate-50 font-sans" dir="rtl">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        // @ts-ignore - יש להוסיף את הפרופ הזה ל-Sidebar.tsx
+        // @ts-ignore
         onLogout={handleLogout} 
       />
       
-      <main className="flex-1 ml-64 p-8">
+      {/* שינוי מ-ml-64 ל-mr-64 כדי לפנות מקום לתפריט בצד ימין */}
+      <main className="flex-1 mr-64 p-8">
         <header className="flex justify-end mb-8">
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-bold text-slate-700">{session.user.user_metadata.full_name || 'User'}</p>
-              <p className="text-xs text-slate-500 uppercase">{session.user.user_metadata.role || 'Member'}</p>
+            <div className="text-left"> {/* שינוי יישור טקסט */}
+              <p className="text-sm font-bold text-slate-700">{session.user.user_metadata.full_name || 'משתמש'}</p>
+              <p className="text-xs text-slate-500 uppercase">{session.user.user_metadata.role || 'חבר'}</p>
             </div>
             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm border-2 border-white shadow-sm cursor-pointer">
               {session.user.email?.[0].toUpperCase()}

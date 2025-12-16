@@ -11,24 +11,26 @@ import {
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onLogout?: () => void; // הוספתי את הטיפוס החסר
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'schedule', label: 'Class Schedule', icon: Calendar },
-    { id: 'students', label: 'Students', icon: Users },
-    { id: 'payments', label: 'Payments', icon: CreditCard },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
+    { id: 'schedule', label: 'מערכת שעות', icon: Calendar },
+    { id: 'students', label: 'תלמידים', icon: Users },
+    { id: 'payments', label: 'תשלומים', icon: CreditCard },
+    { id: 'settings', label: 'הגדרות', icon: Settings },
   ];
 
   return (
-    <div className="w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 flex flex-col shadow-xl z-10">
+    // שינוי מ-left-0 ל-right-0
+    <div className="w-64 bg-slate-900 text-white h-screen fixed right-0 top-0 flex flex-col shadow-xl z-10">
       <div className="p-6 border-b border-slate-800">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <span className="text-indigo-500">❖</span> Classly
         </h1>
-        <p className="text-xs text-slate-400 mt-1">Studio Manager Pro</p>
+        <p className="text-xs text-slate-400 mt-1">ניהול סטודיו מתקדם</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -49,9 +51,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       </nav>
 
       <div className="p-4 border-t border-slate-800">
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 transition-colors">
+        <button 
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 transition-colors"
+        >
           <LogOut size={20} />
-          <span>Sign Out</span>
+          <span>יציאה</span>
         </button>
       </div>
     </div>

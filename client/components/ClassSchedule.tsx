@@ -6,38 +6,43 @@ import {
   Users,
   Plus,
   MoreHorizontal,
-  ChevronRight,
+  ChevronLeft, // שונה מ-Right ל-Left
   Loader2
 } from "lucide-react";
 import { supabase } from '../services/supabaseClient';
 import { ClassSession } from "../types/types";
 
-// מיפוי ימים ממספרים (DB) למחרוזות (UI)
-// הערה: יש לוודא האם 0 ב-DB שלך הוא ראשון או שני. כאן הנחנו 0=Sunday
+// מיפוי לעברית
 const DAY_MAP: Record<number, string> = {
-  0: "Sunday",
-  1: "Monday",
-  2: "Tuesday",
-  3: "Wednesday",
-  4: "Thursday",
-  5: "Friday",
-  6: "Saturday"
+  0: "ראשון",
+  1: "שני",
+  2: "שלישי",
+  3: "רביעי",
+  4: "חמישי",
+  5: "שישי",
+  6: "שבת"
 };
 
 const DAYS = Object.values(DAY_MAP);
+const ENGLISH_DAY_MAP: Record<string, string> = {
+  "ראשון": "Sunday",
+  "שני": "Monday",
+  "שלישי": "Tuesday",
+  "רביעי": "Wednesday",
+  "חמישי": "Thursday",
+  "שישי": "Friday",
+  "שבת": "Saturday"
+};
 
 export const ClassSchedule: React.FC = () => {
-  const [selectedDay, setSelectedDay] = useState("Sunday");
+  const [selectedDay, setSelectedDay] = useState("ראשון");
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // פונקציית שליפת נתונים
   const fetchClasses = async () => {
     try {
       setLoading(true);
       
-      // שליפה של השיעורים + פרטי המדריך (Join)
-      // אנו מניחים ש-instructor_id בטבלת classes מקושר לטבלת users
       const { data, error } = await supabase
         .from('classes')
         .select(`
@@ -52,30 +57,27 @@ export const ClassSchedule: React.FC = () => {
       if (error) throw error;
 
       if (data) {
-        // המרת הנתונים מהמבנה של ה-DB למבנה של האפליקציה
         const formattedClasses: ClassSession[] = data.map((cls: any) => {
-          // חישוב משך זמן בדקות
           const start = new Date(`1970-01-01T${cls.start_time}`);
           const end = new Date(`1970-01-01T${cls.end_time}`);
-          const duration = (end.getTime() - start.getTime()) / 60000; // המרה לדקות
+          const duration = (end.getTime() - start.getTime()) / 60000;
 
           return {
             id: cls.id,
             name: cls.name,
-            // בדיקה שה-join הצליח ושיש נתונים
-            instructor: cls.instructor?.full_name || 'Unknown Instructor',
+            instructor: cls.instructor?.full_name || 'לא ידוע',
             instructorAvatar: cls.instructor?.full_name 
               ? cls.instructor.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() 
-              : 'NB',
-            startTime: cls.start_time.substring(0, 5), // הסרת השניות (09:00:00 -> 09:00)
+              : '?',
+            startTime: cls.start_time.substring(0, 5),
             duration: duration,
-            dayOfWeek: DAY_MAP[cls.day_of_week] || "Sunday",
+            dayOfWeek: DAY_MAP[cls.day_of_week] || "ראשון",
             students: cls.current_enrollment || 0,
             capacity: cls.max_capacity,
-            level: cls.level, // שים לב: ה-DB שומר ב-UPPERCASE, ה-UI מצפה ל-Capitalized. ייתכן וצריך המרה.
-            room: cls.location_room || 'Main Hall',
-            category: 'General', // חסר category ב-join, אפשר להוסיף אם צריך
-            color: 'indigo' // ניתן להוסיף עמודת צבע לטבלת classes או categories
+            level: cls.level, 
+            room: cls.location_room || 'אולם ראשי',
+            category: 'כללי', 
+            color: 'indigo' 
           };
         });
         setClasses(formattedClasses);
@@ -91,7 +93,6 @@ export const ClassSchedule: React.FC = () => {
     fetchClasses();
   }, []);
 
-  // סינון ומיון לוקאלי (לאחר השליפה)
   const filteredClasses = classes
     .filter((c) => c.dayOfWeek === selectedDay)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -105,8 +106,7 @@ export const ClassSchedule: React.FC = () => {
   };
 
   const getLevelBadgeColor = (level: string) => {
-    // התאמה לערכים ב-DB שיכולים להיות ב-UPPERCASE
-    const normalizedLevel = level.toUpperCase();
+    const normalizedLevel = level?.toUpperCase();
     switch (normalizedLevel) {
       case "BEGINNER":
         return "bg-green-100 text-green-700";
@@ -118,6 +118,16 @@ export const ClassSchedule: React.FC = () => {
         return "bg-slate-100 text-slate-700";
     }
   };
+
+  const translateLevel = (level: string) => {
+     const map: Record<string, string> = {
+         'BEGINNER': 'מתחילים',
+         'INTERMEDIATE': 'בינוניים',
+         'ADVANCED': 'מתקדמים',
+         'ALL_LEVELS': 'כל הרמות'
+     };
+     return map[level?.toUpperCase()] || level;
+  }
 
   const getColorClasses = (color: string) => {
     const map: Record<string, string> = {
@@ -134,7 +144,7 @@ export const ClassSchedule: React.FC = () => {
   if (loading && classes.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-slate-400">
-        <Loader2 className="animate-spin mr-2" /> Loading schedule...
+        <Loader2 className="animate-spin mr-2" /> טוען מערכת שעות...
       </div>
     );
   }
@@ -146,13 +156,13 @@ export const ClassSchedule: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Calendar className="text-indigo-600" />
-            Class Schedule
+            מערכת שעות
           </h2>
-          <p className="text-slate-500">Manage your weekly class timetable</p>
+          <p className="text-slate-500">ניהול השיעורים השבועי שלך</p>
         </div>
         <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
           <Plus size={16} />
-          Schedule Class
+          שיבוץ שיעור חדש
         </button>
       </div>
 
@@ -181,14 +191,14 @@ export const ClassSchedule: React.FC = () => {
               key={session.id}
               className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow group relative overflow-hidden"
             >
-              {/* Color Stripe */}
+              {/* Color Stripe - מיקום בימין במקום בשמאל */}
               <div
-                className={`absolute left-0 top-0 bottom-0 w-1.5 ${getColorClasses(
+                className={`absolute right-0 top-0 bottom-0 w-1.5 ${getColorClasses(
                   session.color
                 )}`}
               ></div>
 
-              <div className="flex flex-col md:flex-row md:items-center gap-6 pl-2">
+              <div className="flex flex-col md:flex-row md:items-center gap-6 pr-2">
                 {/* Time & Duration */}
                 <div className="flex-shrink-0 min-w-[140px]">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-lg">
@@ -198,8 +208,8 @@ export const ClassSchedule: React.FC = () => {
                       - {getEndTime(session.startTime, session.duration)}
                     </span>
                   </div>
-                  <div className="text-slate-500 text-sm mt-1 ml-7">
-                    {session.duration} minutes
+                  <div className="text-slate-500 text-sm mt-1 mr-7">
+                    {session.duration} דקות
                   </div>
                 </div>
 
@@ -214,7 +224,7 @@ export const ClassSchedule: React.FC = () => {
                         session.level
                       )}`}
                     >
-                      {session.level}
+                      {translateLevel(session.level)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
@@ -236,7 +246,7 @@ export const ClassSchedule: React.FC = () => {
                   <div className="flex flex-col gap-1 w-full md:w-32">
                     <div className="flex justify-between text-xs font-medium">
                       <span className="text-slate-600 flex items-center gap-1">
-                        <Users size={12} /> Registered
+                        <Users size={12} /> רשומים
                       </span>
                       <span
                         className={
@@ -264,7 +274,7 @@ export const ClassSchedule: React.FC = () => {
                     </div>
                   </div>
 
-                  <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-full transition-colors ml-auto md:ml-0">
+                  <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-full transition-colors mr-auto md:mr-0">
                     <MoreHorizontal size={20} />
                   </button>
                 </div>
@@ -275,13 +285,13 @@ export const ClassSchedule: React.FC = () => {
           <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-200">
             <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-4" />
             <h3 className="text-lg font-medium text-slate-900">
-              No classes scheduled
+              אין שיעורים מתוכננים
             </h3>
             <p className="text-slate-500 mt-1 mb-6">
-              There are no classes scheduled for {selectedDay}.
+              לא נמצאו שיעורים ביום {selectedDay}.
             </p>
             <button className="inline-flex items-center gap-2 text-indigo-600 font-medium hover:text-indigo-700">
-              Add a class for {selectedDay} <ChevronRight size={16} />
+              הוסף שיעור ליום {selectedDay} <ChevronLeft size={16} />
             </button>
           </div>
         )}
