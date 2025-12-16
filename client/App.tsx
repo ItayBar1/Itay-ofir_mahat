@@ -33,27 +33,6 @@ function App() {
     await supabase.auth.signOut();
   };
 
-  useEffect(() => {
-    // בדיקת Session קיים
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // האזנה לשינויים בסטטוס ההתחברות
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
