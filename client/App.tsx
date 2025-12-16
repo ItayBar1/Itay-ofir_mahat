@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./services/supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
-import { Dashboard } from "./components/Dashboard";
+import { Dashboard } from "./components/Dashboard"; // Admin Dashboard
+import { StudentDashboard } from "./components/student/StudentDashboard"; // Student Dashboard
 import { StudentManagement } from "./components/StudentManagement";
 import { ClassSchedule } from "./components/ClassSchedule";
 import { AuthPage } from "./components/AuthPage";
@@ -14,10 +15,15 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
+  // שמירת התפקיד בסטייט לגישה נוחה
+  const [userRole, setUserRole] = useState<string>("STUDENT"); 
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user?.user_metadata?.role) {
+        setUserRole(session.user.user_metadata.role);
+      }
       setLoading(false);
     });
 
@@ -25,6 +31,9 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user?.user_metadata?.role) {
+        setUserRole(session.user.user_metadata.role);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -32,20 +41,37 @@ function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setUserRole("STUDENT"); // Reset role on logout
   };
 
   const renderContent = () => {
+    // לוגיקת ניתוב לפי טאב ותפקיד
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        // הפרדה בין דאשבורד מנהל לדאשבורד סטודנט
+        if (userRole === 'ADMIN') return <Dashboard />;
+        if (userRole === 'INSTRUCTOR') return <Dashboard />; // או ליצור InstructorDashboard בעתיד
+        return <StudentDashboard />;
+        
       case "students":
+        // הגנה: סטודנט לא אמור לראות את זה
+        if (userRole === 'STUDENT') return <div>אין לך הרשאה לצפות בעמוד זה</div>;
         return <StudentManagement />;
+        
       case "schedule":
+        // הגנה: לפי ה-PRD סטודנט רואה את הלו"ז שלו בדאשבורד, אבל אם רוצים לאפשר לו לראות לו"ז כללי:
+        // כרגע נחסום לפי האפיון ב-Sidebar, אבל נוסיף הגנה גם כאן
+        if (userRole === 'STUDENT') return <div>אין לך הרשאה לצפות בעמוד זה</div>;
         return <ClassSchedule />;
+        
       case "payments":
+        if (userRole !== 'ADMIN') return <div>אין לך הרשאה לצפות בעמוד זה</div>;
         return <Payments />;
+        
       case "browse":
+        // דף לסטודנטים
         return <BrowseCourses />;
+        
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
@@ -69,27 +95,25 @@ function App() {
   }
 
   return (
-    // שינוי ל-rtl
     <div className="flex min-h-screen bg-slate-50 font-sans" dir="rtl">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         // @ts-ignore
         onLogout={handleLogout}
+        userRole={userRole} // העברת התפקיד ל-Sidebar
       />
 
-      {/* שינוי מ-ml-64 ל-mr-64 כדי לפנות מקום לתפריט בצד ימין */}
       <main className="flex-1 mr-64 p-8">
         <header className="flex justify-end mb-8">
           <div className="flex items-center gap-4">
             <div className="text-left">
-              {" "}
-              {/* שינוי יישור טקסט */}
               <p className="text-sm font-bold text-slate-700">
                 {session.user.user_metadata.full_name || "משתמש"}
               </p>
               <p className="text-xs text-slate-500 uppercase">
-                {session.user.user_metadata.role || "חבר"}
+                {userRole === 'ADMIN' ? 'מנהל מערכת' : 
+                 userRole === 'INSTRUCTOR' ? 'מדריך' : 'סטודנט'}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm border-2 border-white shadow-sm cursor-pointer">

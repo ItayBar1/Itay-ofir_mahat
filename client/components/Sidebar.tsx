@@ -5,32 +5,69 @@ import {
   Users, 
   CreditCard, 
   Settings,
-  LogOut
+  LogOut,
+  Search // אייקון חדש לחיפוש קורסים
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onLogout?: () => void; // הוספתי את הטיפוס החסר
+  onLogout?: () => void;
+  userRole: string; // הוספת פרופ לתפקיד
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
-  const menuItems = [
-    { id: 'dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
-    { id: 'schedule', label: 'מערכת שעות', icon: Calendar },
-    { id: 'students', label: 'תלמידים', icon: Users },
-    { id: 'payments', label: 'תשלומים', icon: CreditCard },
-    { id: 'settings', label: 'הגדרות', icon: Settings },
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, userRole }) => {
+  
+  // הגדרת הפריטים עם הרשאות
+  const allMenuItems = [
+    { 
+      id: 'dashboard', 
+      label: 'לוח בקרה', 
+      icon: LayoutDashboard, 
+      roles: ['ADMIN', 'INSTRUCTOR', 'STUDENT'] 
+    },
+    { 
+      id: 'browse', 
+      label: 'הרשמה לקורסים', 
+      icon: Search, 
+      roles: ['STUDENT'] // רק לסטודנטים
+    },
+    { 
+      id: 'schedule', 
+      label: 'מערכת שעות', 
+      icon: Calendar, 
+      roles: ['ADMIN', 'INSTRUCTOR'] 
+    },
+    { 
+      id: 'students', 
+      label: 'תלמידים', 
+      icon: Users, 
+      roles: ['ADMIN', 'INSTRUCTOR'] 
+    },
+    { 
+      id: 'payments', 
+      label: 'תשלומים', 
+      icon: CreditCard, 
+      roles: ['ADMIN'] // כרגע למנהל בלבד (לפי ה-PRD לסטודנט יש תשלום בתוך ההרשמה/דאשבורד)
+    },
+    { 
+      id: 'settings', 
+      label: 'הגדרות', 
+      icon: Settings, 
+      roles: ['ADMIN'] 
+    },
   ];
 
+  // סינון הפריטים לפי התפקיד הנוכחי
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+
   return (
-    // שינוי מ-left-0 ל-right-0
     <div className="w-64 bg-slate-900 text-white h-screen fixed right-0 top-0 flex flex-col shadow-xl z-10">
       <div className="p-6 border-b border-slate-800">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <span className="text-indigo-500">❖</span> Classly
         </h1>
-        <p className="text-xs text-slate-400 mt-1">ניהול סטודיו מתקדם</p>
+        <p className="text-xs text-slate-400 mt-1">ניהול סטודיו {userRole === 'STUDENT' ? 'אישי' : 'מתקדם'}</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
