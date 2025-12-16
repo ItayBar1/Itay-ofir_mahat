@@ -17,8 +17,8 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { supabase } from '../services/supabaseClient';
-import { Database } from '../types/database';
+import { supabase } from '../../services/supabaseClient';
+import { Database } from '../../types/database';
 
 interface ChartData {
   name: string;

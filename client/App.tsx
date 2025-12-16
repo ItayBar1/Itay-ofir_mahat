@@ -3,9 +3,9 @@ import { supabase } from "./services/supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
 // ייבוא הקומפוננטות של המנהל
-import { Dashboard } from "./components/Dashboard";
-import { StudentManagement } from "./components/StudentManagement";
-import { ClassSchedule } from "./components/ClassSchedule";
+import { Dashboard } from "./components/admin/Dashboard";
+import { StudentManagement } from "./components/admin/StudentManagement";
+import { ClassSchedule } from "./components/admin/ClassSchedule";
 // ייבוא הקומפוננטות של המדריך (חדשות)
 import { InstructorDashboard } from "./components/instructor/InstructorDashboard";
 import { InstructorStudents } from "./components/instructor/InstructorStudents";

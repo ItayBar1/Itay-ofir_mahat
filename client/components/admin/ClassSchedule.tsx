@@ -12,9 +12,9 @@ import {
   Save,
   DollarSign
 } from "lucide-react";
-import { supabase } from '../services/supabaseClient';
-import { ClassSession } from "../types/types";
-import { Database } from '../types/database';
+import { supabase } from '../../services/supabaseClient';
+import { ClassSession } from "../../types/types";
+import { Database } from '../../types/database';
 
 // --- Constants ---
 const DAY_MAP: Record<number, string> = {
