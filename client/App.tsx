@@ -8,6 +8,7 @@ import { ClassSchedule } from "./components/ClassSchedule";
 import { AuthPage } from "./components/AuthPage";
 import { Loader2 } from "lucide-react";
 import { Payments } from "./components/Payments";
+import { BrowseCourses } from "./components/student/BrowseCourses";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -43,6 +44,8 @@ function App() {
         return <ClassSchedule />;
       case "payments":
         return <Payments />;
+      case "browse":
+        return <BrowseCourses />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
