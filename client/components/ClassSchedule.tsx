@@ -6,13 +6,16 @@ import {
   Users,
   Plus,
   MoreHorizontal,
-  ChevronLeft, // שונה מ-Right ל-Left
-  Loader2
+  ChevronLeft,
+  Loader2,
+  X,
+  Save,
+  DollarSign
 } from "lucide-react";
 import { supabase } from '../services/supabaseClient';
 import { ClassSession } from "../types/types";
 
-// מיפוי לעברית
+// --- Constants ---
 const DAY_MAP: Record<number, string> = {
   0: "ראשון",
   1: "שני",
@@ -24,20 +27,267 @@ const DAY_MAP: Record<number, string> = {
 };
 
 const DAYS = Object.values(DAY_MAP);
-const ENGLISH_DAY_MAP: Record<string, string> = {
-  "ראשון": "Sunday",
-  "שני": "Monday",
-  "שלישי": "Tuesday",
-  "רביעי": "Wednesday",
-  "חמישי": "Thursday",
-  "שישי": "Friday",
-  "שבת": "Saturday"
+
+// --- Add Class Modal ---
+interface AddClassModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  studioId: string; // אם יש צורך, כרגע נשלוף אוטומטית אם המשתמש מחובר
+}
+
+const AddClassModal: React.FC<AddClassModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [instructors, setInstructors] = useState<{id: string, full_name: string}[]>([]);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    instructor_id: '',
+    day_of_week: 0,
+    start_time: '09:00',
+    end_time: '10:00',
+    max_capacity: 20,
+    level: 'ALL_LEVELS',
+    price_ils: 0,
+    location_room: 'אולם ראשי'
+  });
+  
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch instructors when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchInstructors = async () => {
+        const { data } = await supabase
+          .from('users')
+          .select('id, full_name')
+          .eq('role', 'INSTRUCTOR');
+        
+        if (data) {
+          setInstructors(data);
+          // Set default instructor if exists
+          if (data.length > 0 && !formData.instructor_id) {
+            setFormData(prev => ({ ...prev, instructor_id: data[0].id }));
+          }
+        }
+      };
+      fetchInstructors();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Get current user for studio_id logic (assuming 1 studio for now or fetch from user profile)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // In a real app, we fetch the studio_id from the user's profile. 
+      // For now, we query the studio table or assume the user has one.
+      const { data: userData } = await supabase
+        .from('users')
+        .select('studio_id')
+        .eq('id', user.id)
+        .single();
+        
+      const studioId = userData?.studio_id;
+
+      if (!studioId) throw new Error("לא נמצא סטודיו משויך למשתמש");
+
+      const { error: insertError } = await supabase
+        .from('classes')
+        .insert([{
+          studio_id: studioId,
+          name: formData.name,
+          instructor_id: formData.instructor_id,
+          day_of_week: Number(formData.day_of_week),
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          max_capacity: formData.max_capacity,
+          level: formData.level,
+          price_ils: formData.price_ils,
+          location_room: formData.location_room,
+          is_active: true
+        }]);
+
+      if (insertError) throw insertError;
+
+      onSuccess();
+      onClose();
+      // Reset form (partial)
+      setFormData(prev => ({ ...prev, name: '', price_ils: 0 }));
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "שגיאה ביצירת השיעור");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-right">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fadeIn flex flex-col max-h-[90vh]">
+        <div className="bg-indigo-600 p-6 flex justify-between items-center text-white shrink-0">
+          <h3 className="text-xl font-bold">שיבוץ שיעור חדש</h3>
+          <button onClick={onClose} className="hover:bg-indigo-500 p-1 rounded-full transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">שם השיעור</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                placeholder="לדוגמה: יוגה מתחילים"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">מדריך</label>
+              <select
+                required
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                value={formData.instructor_id}
+                onChange={e => setFormData({...formData, instructor_id: e.target.value})}
+              >
+                <option value="" disabled>בחר מדריך</option>
+                {instructors.map(inst => (
+                  <option key={inst.id} value={inst.id}>{inst.full_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">יום בשבוע</label>
+              <select
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                value={formData.day_of_week}
+                onChange={e => setFormData({...formData, day_of_week: Number(e.target.value)})}
+              >
+                {Object.entries(DAY_MAP).map(([key, val]) => (
+                  <option key={key} value={key}>{val}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">מיקום / חדר</label>
+              <input
+                type="text"
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={formData.location_room}
+                onChange={e => setFormData({...formData, location_room: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">שעת התחלה</label>
+              <input
+                type="time"
+                required
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={formData.start_time}
+                onChange={e => setFormData({...formData, start_time: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">שעת סיום</label>
+              <input
+                type="time"
+                required
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={formData.end_time}
+                onChange={e => setFormData({...formData, end_time: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">רמה</label>
+              <select
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                value={formData.level}
+                onChange={e => setFormData({...formData, level: e.target.value})}
+              >
+                <option value="ALL_LEVELS">כל הרמות</option>
+                <option value="BEGINNER">מתחילים</option>
+                <option value="INTERMEDIATE">בינוניים</option>
+                <option value="ADVANCED">מתקדמים</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">מכסה מקסימלית</label>
+              <input
+                type="number"
+                min="1"
+                required
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={formData.max_capacity}
+                onChange={e => setFormData({...formData, max_capacity: Number(e.target.value)})}
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700">מחיר (₪)</label>
+              <div className="relative">
+                <DollarSign className="absolute right-3 top-2.5 text-slate-400" size={16} />
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  value={formData.price_ils}
+                  onChange={e => setFormData({...formData, price_ils: Number(e.target.value)})}
+                />
+              </div>
+            </div>
+          </div>
+
+          {error && <div className="text-red-500 text-sm bg-red-50 p-2 rounded">{error}</div>}
+          
+          <div className="pt-4 flex gap-3 shrink-0">
+             <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition-colors"
+            >
+              ביטול
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              שמור שיעור
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 };
+
+// --- Main Component ---
 
 export const ClassSchedule: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState("ראשון");
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchClasses = async () => {
     try {
@@ -58,8 +308,10 @@ export const ClassSchedule: React.FC = () => {
 
       if (data) {
         const formattedClasses: ClassSession[] = data.map((cls: any) => {
-          const start = new Date(`1970-01-01T${cls.start_time}`);
-          const end = new Date(`1970-01-01T${cls.end_time}`);
+          // Calculate duration
+          const today = new Date().toISOString().split('T')[0];
+          const start = new Date(`${today}T${cls.start_time}`);
+          const end = new Date(`${today}T${cls.end_time}`);
           const duration = (end.getTime() - start.getTime()) / 60000;
 
           return {
@@ -108,14 +360,10 @@ export const ClassSchedule: React.FC = () => {
   const getLevelBadgeColor = (level: string) => {
     const normalizedLevel = level?.toUpperCase();
     switch (normalizedLevel) {
-      case "BEGINNER":
-        return "bg-green-100 text-green-700";
-      case "INTERMEDIATE":
-        return "bg-blue-100 text-blue-700";
-      case "ADVANCED":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-slate-100 text-slate-700";
+      case "BEGINNER": return "bg-green-100 text-green-700";
+      case "INTERMEDIATE": return "bg-blue-100 text-blue-700";
+      case "ADVANCED": return "bg-red-100 text-red-700";
+      default: return "bg-slate-100 text-slate-700";
     }
   };
 
@@ -130,27 +378,18 @@ export const ClassSchedule: React.FC = () => {
   }
 
   const getColorClasses = (color: string) => {
-    const map: Record<string, string> = {
-      emerald: "bg-emerald-500",
-      orange: "bg-orange-500",
-      purple: "bg-purple-500",
-      pink: "bg-pink-500",
-      blue: "bg-blue-500",
-      indigo: "bg-indigo-500",
-    };
-    return map[color] || "bg-indigo-500";
+    return "bg-indigo-500"; // Simplified for now
   };
-
-  if (loading && classes.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64 text-slate-400">
-        <Loader2 className="animate-spin mr-2" /> טוען מערכת שעות...
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
+      <AddClassModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => fetchClasses()}
+        studioId="" // Will be handled inside modal via auth
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -160,7 +399,10 @@ export const ClassSchedule: React.FC = () => {
           </h2>
           <p className="text-slate-500">ניהול השיעורים השבועי שלך</p>
         </div>
-        <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg"
+        >
           <Plus size={16} />
           שיבוץ שיעור חדש
         </button>
@@ -185,18 +427,18 @@ export const ClassSchedule: React.FC = () => {
 
       {/* Schedule List */}
       <div className="space-y-4">
-        {filteredClasses.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-64 text-slate-400">
+             <Loader2 className="animate-spin mr-2" /> טוען מערכת שעות...
+          </div>
+        ) : filteredClasses.length > 0 ? (
           filteredClasses.map((session) => (
             <div
               key={session.id}
               className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 hover:shadow-md transition-shadow group relative overflow-hidden"
             >
-              {/* Color Stripe - מיקום בימין במקום בשמאל */}
-              <div
-                className={`absolute right-0 top-0 bottom-0 w-1.5 ${getColorClasses(
-                  session.color
-                )}`}
-              ></div>
+              {/* Color Stripe */}
+              <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${getColorClasses(session.color)}`}></div>
 
               <div className="flex flex-col md:flex-row md:items-center gap-6 pr-2">
                 {/* Time & Duration */}
@@ -290,7 +532,10 @@ export const ClassSchedule: React.FC = () => {
             <p className="text-slate-500 mt-1 mb-6">
               לא נמצאו שיעורים ביום {selectedDay}.
             </p>
-            <button className="inline-flex items-center gap-2 text-indigo-600 font-medium hover:text-indigo-700">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 text-indigo-600 font-medium hover:text-indigo-700"
+            >
               הוסף שיעור ליום {selectedDay} <ChevronLeft size={16} />
             </button>
           </div>
