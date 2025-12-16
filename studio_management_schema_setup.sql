@@ -390,4 +390,11 @@ FOR SELECT USING (
   )
 );
 
+-- FIX: Add missing INSERT policy to allow students to enroll themselves
+CREATE POLICY "Students can insert their own enrollments" ON public.enrollments
+FOR INSERT WITH CHECK (
+    student_id = auth.uid()
+    AND studio_id = public.get_my_studio_id() -- מוודא שהרישום הוא לסטודיו של המשתמש המחובר
+);
+
 COMMIT;
