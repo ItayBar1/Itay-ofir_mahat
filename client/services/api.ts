@@ -10,8 +10,8 @@ import {
   InstructorStats 
 } from "../types/types";
 
-// הגדרת כתובת ה-API (משתנה סביבה או ברירת מחדל ללוקאל)
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// הגדרת כתובת ה-API
+const API_URL = import.meta.env.VITE_API_URL;
 
 // יצירת מופע Axios
 export const apiClient = axios.create({
