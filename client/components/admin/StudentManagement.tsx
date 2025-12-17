@@ -41,16 +41,18 @@ export const StudentManagement: React.FC = () => {
   });
 
   // טעינת רשימת השיעורים (עבור ה-Dropdown)
-  const fetchClassesList = async () => {
-    const { data } = await supabase
-      .from('classes')
-      .select('name')
-      .eq('is_active', true)
-      .order('name');
-    
-    if (data) {
-      // תיקון השגיאה: הוספת טיפוס מפורש (c: any)
-      setClassList(["הכל", ...data.map((c: any) => c.name)]);
+const fetchClassesList = async () => {
+    try {
+      // שימוש ב-CourseService כדי למשוך את כל הקורסים הפעילים
+      const courses = await CourseService.getAll({ status: 'active' });
+      
+      if (courses) {
+        // המרה לרשימת שמות ייחודיים
+        const uniqueNames = Array.from(new Set(courses.map(c => c.name))).sort();
+        setClassList(["הכל", ...uniqueNames]);
+      }
+    } catch (err) {
+      console.error("Failed to load class list", err);
     }
   };
 
