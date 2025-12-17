@@ -1,0 +1,60 @@
+import { supabaseAdmin } from '../config/supabase';
+
+export const DashboardService = {
+  async getAdminStats(studioId: string) {
+    const [studentsRes, classesRes, revenueRes] = await Promise.all([
+      // סה"כ תלמידים
+      supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('role', 'STUDENT').eq('studio_id', studioId),
+      
+      // כיתות פעילות
+      supabaseAdmin.from('classes').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('studio_id', studioId),
+
+      // הכנסות החודש
+      supabaseAdmin.from('payments')
+          .select('amount_ils')
+          .eq('status', 'COMPLETED')
+          .eq('studio_id', studioId)
+          .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+    ]);
+
+    const monthlyRevenue = revenueRes.data?.reduce((sum, p) => sum + p.amount_ils, 0) || 0;
+
+    // נתונים לגרף (Hardcoded כרגע לדוגמה, בעתיד שאילתת SQL מורכבת)
+    const chartData = [
+      { name: 'ינואר', revenue: 4000, attendance: 240 },
+      { name: 'פברואר', revenue: 3000, attendance: 139 },
+      { name: 'מרץ', revenue: monthlyRevenue || 2000, attendance: 980 },
+    ];
+
+    return {
+      totalStudents: studentsRes.count || 0,
+      activeClasses: classesRes.count || 0,
+      monthlyRevenue,
+      avgAttendance: 85,
+      chartData
+    };
+  },
+
+  async getInstructorStats(instructorId: string) {
+    const todayDayOfWeek = new Date().getDay();
+
+    const coursesPromise = supabaseAdmin
+      .from('classes')
+      .select('*')
+      .eq('instructor_id', instructorId)
+      .eq('is_active', true);
+
+    const [coursesRes] = await Promise.all([coursesPromise]);
+
+    const myCourses = coursesRes.data || [];
+    const todayClasses = myCourses.filter(c => c.day_of_week === todayDayOfWeek);
+    const nextClass = todayClasses.length > 0 ? todayClasses[0] : null;
+
+    return {
+      myCoursesCount: myCourses.length,
+      myStudentsCount: 0, // לשיפור בעתיד
+      todayClassesCount: todayClasses.length,
+      nextClass: nextClass
+    };
+  }
+};
