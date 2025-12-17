@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { EnrollmentService } from '../services/enrollmentService';
-import { supabase } from '../config/supabase';
+import { PaymentService } from '../services/paymentService';
 
 export class EnrollmentController {
 
     // אדמין רושם תלמיד ידנית
-    static async adminEnrollStudent(req: Request, res: Response, next: NextFunction) {
+static async adminEnrollStudent(req: Request, res: Response, next: NextFunction) {
         try {
             const { studentId, classId, notes } = req.body;
             const studioId = req.user.studio_id;
@@ -14,22 +14,22 @@ export class EnrollmentController {
                 return res.status(400).json({ error: 'Student ID and Class ID are required' });
             }
 
-            const result = await EnrollmentService.enrollStudent(
+            const { enrollment } = await EnrollmentService.enrollStudent(
                 studioId,
                 studentId,
                 classId,
-                'ACTIVE', // אדמין רושם ישירות כפעיל
-                'PAID',   // הנחה: רישום ידני של אדמין הוא בד"כ לאחר הסדר תשלום (אפשר לשנות לפרמטר)
+                'ACTIVE',
+                'PAID', 
                 notes
             );
 
-            res.status(201).json(result);
+            res.status(201).json(enrollment);
         } catch (error: any) {
             next(error);
         }
     }
 
-    // תלמיד נרשם עצמאית (יוצר PENDING)
+// תלמיד נרשם עצמאית (יוצר PENDING enrollment + PENDING payment + Stripe Intent)
     static async studentSelfRegister(req: Request, res: Response, next: NextFunction) {
         try {
             const studentId = req.user.id;
@@ -40,23 +40,50 @@ export class EnrollmentController {
                 return res.status(400).json({ error: 'Class ID is required' });
             }
 
-            // יצירת הרשמה בסטטוס ממתין לתשלום
-            const result = await EnrollmentService.enrollStudent(
+            // 1. יצירת הרשמה (PENDING) וקבלת פרטי המחיר
+            const { enrollment, courseDetails } = await EnrollmentService.enrollStudent(
                 studioId,
                 studentId,
                 classId,
-                'ACTIVE', // הסטטוס הרשמה הוא ACTIVE, אבל התשלום PENDING? לפי ה-PRD הסטטוס הופך ACTIVE רק אחרי תשלום.
-                // נלך לפי ה-PRD: "Create enrollment (PENDING status)"
-                'PENDING', 
-                'PENDING'  // סטטוס תשלום
+                'PENDING', // סטטוס הרשמה ממתין לתשלום
+                'PENDING'  // סטטוס תשלום ממתין
             );
 
-            // כאן המקום שבו בעתיד נחזיר גם את ה-ClientSecret של Stripe
-            res.status(201).json({ 
-                message: 'Registration initiated', 
-                enrollment: result 
-                // clientSecret: ... (יטופל במודול תשלומים)
+            // אם הקורס בחינם (נדיר, אבל אפשרי), נחזיר מיד הצלחה ללא תשלום
+            if (courseDetails.price === 0) {
+                 // עדכון ל-ACTIVE במידה וזה חינם (דורש לוגיקה נוספת, נניח כרגע שזה תמיד בתשלום)
+            }
+
+            // 2. יצירת Payment Intent מול Stripe
+            const paymentIntent = await PaymentService.createIntent(
+                courseDetails.price, 
+                'ils', 
+                `Registration for ${courseDetails.name}`,
+                { 
+                    enrollment_id: enrollment.id, 
+                    student_id: studentId,
+                    class_id: classId 
+                }
+            );
+
+            // 3. יצירת רשומת תשלום (PENDING) ב-DB שלנו
+            // זה מבטיח שכאשר נקרא ל-confirmPayment, הרשומה תהיה קיימת
+            await PaymentService.createPaymentRecord({
+                studioId: studioId,
+                studentId: studentId,
+                enrollmentId: enrollment.id,
+                amount: courseDetails.price,
+                stripePaymentIntentId: paymentIntent.id
             });
+
+            // 4. החזרת ה-Client Secret לקליינט
+            res.status(201).json({ 
+                message: 'Registration initiated, proceed to payment', 
+                clientSecret: paymentIntent.clientSecret, // הקליינט ישתמש בזה ב-Stripe Elements
+                enrollmentId: enrollment.id,
+                amount: courseDetails.price
+            });
+
         } catch (error: any) {
             next(error);
         }

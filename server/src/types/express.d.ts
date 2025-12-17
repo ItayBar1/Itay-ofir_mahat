@@ -1,10 +1,16 @@
-declare namespace Express {
-  export interface Request {
-    user: {
+import { Request } from 'express';
+
+declare global {
+  namespace Express {
+    interface User {
       id: string;
-      role: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT';
       email: string;
-    };
-    studioId: string; // הגדרת השדה שחסר לך
+      role: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT';
+      studio_id: string;
+    }
+
+    interface Request {
+      user?: User;
+    }
   }
 }

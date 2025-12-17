@@ -33,6 +33,47 @@ export class PaymentService {
   }
 
   /**
+   * יצירת רשומת תשלום ב-DB בסטטוס PENDING
+   * זהו הקישור בין ה-Stripe Payment Intent לבין ההרשמה והמשתמש במערכת
+   */
+  static async createPaymentRecord(params: {
+    studioId: string;
+    studentId: string;
+    enrollmentId: string;
+    amount: number;
+    currency?: string;
+    stripePaymentIntentId: string;
+  }) {
+    const { 
+        studioId, studentId, enrollmentId, amount, 
+        currency = 'ILS', stripePaymentIntentId 
+    } = params;
+
+    const { data, error } = await supabaseAdmin
+      .from('payments')
+      .insert([{
+        studio_id: studioId,
+        student_id: studentId,
+        enrollment_id: enrollmentId,
+        amount_ils: amount,
+        amount_cents: Math.round(amount * 100),
+        currency: currency,
+        payment_method: 'STRIPE',
+        stripe_payment_intent_id: stripePaymentIntentId,
+        status: 'PENDING', // ממתין לאישור ב-Webhook או ב-Client
+        created_at: new Date()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create payment record: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
    * אימות תשלום ועדכון מסד הנתונים (הפונקציה שיצרנו קודם)
    */
   static async confirmPayment(paymentIntentId: string) {
