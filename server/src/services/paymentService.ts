@@ -27,7 +27,7 @@ export class PaymentService {
       amount: Math.round(amount * 100), // Stripe דורש אגורות/סנטים
       currency: currency,
       description: description,
-      metadata: metadata,
+      metadata: metadata as any,
       automatic_payment_methods: {
         enabled: true,
       },
