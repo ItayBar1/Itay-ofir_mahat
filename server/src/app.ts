@@ -1,36 +1,46 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import dotenv from 'dotenv';
+
+// Import Routes
 import courseRoutes from './routes/courseRoutes';
-import paymentRoutes from './routes/payments';
 import studentRoutes from './routes/studentRoutes';
-import dashboardRoutes from './routes/dashboardRoutes';
 import instructorRoutes from './routes/instructorRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
+import enrollmentRoutes from './routes/enrollmentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
+// import paymentRoutes... (נחליף את הקובץ הישן בחדש אם תרצה, או שנשתמש בו ליצירת Intent)
+
+dotenv.config();
 
 export const app = express();
 
-// הגדרות אבטחה בסיסיות
+// Security Middleware
 app.use(helmet());
-
-// הגדרת CORS
 app.use(cors({
-    origin: process.env.CLIENT_URL, 
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: process.env.CLIENT_URL,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true
 }));
 
-app.use(express.json());
+// --- Critical Section for Webhooks ---
+// מגדירים את ה-Webhook לפני ה-JSON Parser הגלובלי!
+// אנו משתמשים ב-express.raw() ספציפית לנתיב זה כדי לשמור על החתימה המקורית
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
+// --- General Middleware ---
+app.use(express.json()); // שאר האפליקציה עובדת עם JSON רגיל
 
 // Routes
 app.use('/api/courses', courseRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use('/api/students', studentRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/attendance', attendanceRoutes);
-app.use('/api/webhooks', webhookRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+// app.use('/api/payments', paymentRoutes); // אם יש לך נתיב ליצירת תשלום (create-intent)
 
 // Health Check
 app.get('/api/health', (req, res) => {
