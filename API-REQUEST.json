@@ -5,6 +5,18 @@
   },
   "resources": [
     {
+      "resource": "Users",
+      "base_path": "/users",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/me",
+          "access": "Authenticated User",
+          "description": "Retrieves the full profile of the currently logged-in user. [New Endpoint]"
+        }
+      ]
+    },
+    {
       "resource": "Students",
       "base_path": "/students",
       "endpoints": [
@@ -36,7 +48,7 @@
           "method": "DELETE",
           "path": "/:id",
           "access": "Admin",
-          "description": "Soft deletes a student by changing their status to 'INACTIVE'. [New Feature]"
+          "description": "Soft deletes a student by changing their status to 'INACTIVE'."
         }
       ]
     },
@@ -102,7 +114,7 @@
           "method": "POST",
           "path": "/register",
           "access": "Student",
-          "description": "Initiates student self-registration. Creates a PENDING enrollment, generates a Stripe Payment Intent, and returns the Client Secret. [Updated Flow]"
+          "description": "Initiates student self-registration. Creates a PENDING enrollment, generates a Stripe Payment Intent, and returns the Client Secret."
         },
         {
           "method": "GET",
@@ -126,19 +138,25 @@
     },
     {
       "resource": "Payments",
-      "base_path": "/payment",
+      "base_path": "/payments",
       "endpoints": [
+        {
+          "method": "GET",
+          "path": "/",
+          "access": "Admin",
+          "description": "Retrieves a history of all payment records. [New Endpoint]"
+        },
         {
           "method": "POST",
           "path": "/create-intent",
           "access": "Authenticated User",
-          "description": "Creates a new Stripe Payment Intent manually (mostly used internally by register, but exposed if needed)."
+          "description": "Creates a new Stripe Payment Intent manually."
         },
         {
           "method": "POST",
           "path": "/confirm",
           "access": "Authenticated User",
-          "description": "Validates a successful Stripe payment via PaymentIntent ID and updates the database record to 'PAID'. [New Feature]"
+          "description": "Validates a successful Stripe payment via PaymentIntent ID and updates the database record to 'PAID'."
         }
       ]
     },

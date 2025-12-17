@@ -115,4 +115,29 @@ export class PaymentService {
 
     return { success: true, payment: paymentRecord };
   }
+
+  /**
+   * שליפת כל היסטוריית התשלומים (עבור אדמין)
+   */
+  static async getAllPayments(studioId: string) {
+    // הנחה: הטבלה payments מקושרת ל-users ול-enrollments
+    // נבצע שליפה שכוללת את שם הסטודנט
+    const { data, error } = await supabaseAdmin
+      .from('payments')
+      .select(`
+        *,
+        student:users ( full_name, email ),
+        enrollment:enrollments ( 
+          class:courses ( title ) 
+        )
+      `)
+      .eq('studio_id', studioId) // סינון לפי סטודיו
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch payments: ${error.message}`);
+    }
+
+    return data;
+  }
 }

@@ -13,6 +13,7 @@ import enrollmentRoutes from './routes/enrollmentRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import paymentRoutes from './routes/paymentsRoutes';
+import userRoutes from './routes/userRoutes';
 
 export const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/users', userRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {

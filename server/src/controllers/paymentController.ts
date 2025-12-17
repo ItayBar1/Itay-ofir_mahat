@@ -52,4 +52,28 @@ export class PaymentController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * שליפת כל התשלומים
+   */
+  static async getAll(req: Request, res: Response) {
+    const requestLog = req.logger || logger.child({ controller: 'PaymentController', method: 'getAll' });
+
+    try {
+      const studioId = req.studioId; // מגיע מ-authMiddleware
+
+      if (!studioId) {
+        return res.status(400).json({ error: 'Studio ID is missing' });
+      }
+
+      const payments = await PaymentService.getAllPayments(studioId);
+      
+      requestLog.info({ count: payments?.length }, 'Fetched payment history');
+      res.status(200).json(payments);
+
+    } catch (error: any) {
+      requestLog.error({ err: error }, 'Error fetching payment history');
+      res.status(500).json({ error: error.message });
+    }
+  }
 }

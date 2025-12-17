@@ -1,11 +1,18 @@
 import { Router } from 'express';
 import { PaymentController } from '../controllers/paymentController';
-import { authenticateUser } from '../middleware/authMiddleware';
+import { authenticateUser, requireRole } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // החלת אימות משתמש על כל הנתיבים (אופציונלי - תלוי בדרישות האבטחה שלך)
 router.use(authenticateUser);
+
+/**
+ * @route   GET /api/payments
+ * @desc    Get all payment history
+ * @access  Admin
+ */
+router.get('/', requireRole(['admin', 'instructor']), PaymentController.getAll); // אפשר להסיר instructor אם זה רק לאדמין
 
 /**
  * @route   POST /api/payment/create-intent
