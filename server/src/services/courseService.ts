@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 
 export class CourseService {
   
@@ -6,7 +6,7 @@ export class CourseService {
    * Get all courses with optional filters
    */
   static async getAllCourses(userRole: string, filters: any = {}) {
-    let query = supabase.from('classes').select('*, instructor:users(full_name)');
+    let query = supabaseAdmin.from('classes').select('*, instructor:users(full_name)');
 
     // If student, only show active courses
     if (userRole === 'STUDENT') {
@@ -30,11 +30,11 @@ export class CourseService {
   static async getAvailableForStudent(studentId: string) {
     // מביא קורסים פעילים. 
     // בשיפור עתידי: נסנן קורסים שהתלמיד כבר רשום אליהם באמצעות join ל-enrollments
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('classes')
       .select('*, instructor:users(full_name)')
       .eq('is_active', true)
-      .gt('max_capacity', supabase.rpc('current_enrollment_check')); // או פשוט סינון בקוד
+      .gt('max_capacity', supabaseAdmin.rpc('current_enrollment_check')); // או פשוט סינון בקוד
 
     // לבינתיים פשוט נחזיר פעילים, הסינון של "כבר רשום" יכול להיעשות בקלינט או בשאילתה מורכבת יותר
     if (error) throw new Error(error.message);
@@ -42,7 +42,7 @@ export class CourseService {
   }
 
   static async getCourseById(id: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('classes')
       .select('*, instructor:users(full_name, profile_image_url), studio:studios(name)')
       .eq('id', id)
@@ -53,7 +53,7 @@ export class CourseService {
   }
 
   static async getCoursesByInstructor(instructorId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('classes')
       .select('*')
       .eq('instructor_id', instructorId)
@@ -64,7 +64,7 @@ export class CourseService {
   }
 
   static async createCourse(courseData: any) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('classes')
       .insert([courseData])
       .select()
@@ -75,7 +75,7 @@ export class CourseService {
   }
 
   static async updateCourse(id: string, updates: any) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('classes')
       .update(updates)
       .eq('id', id)
@@ -88,7 +88,7 @@ export class CourseService {
 
   static async softDeleteCourse(id: string) {
     // Soft delete: set is_active to false
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('classes')
       .update({ is_active: false })
       .eq('id', id);

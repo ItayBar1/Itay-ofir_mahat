@@ -67,6 +67,11 @@ export const StudentController = {
 
   create: async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.studioId) {
+         res.status(400).json({ error: "Studio ID is missing from request" });
+         return;
+      }
+      
       const newStudent = await StudentService.create(req.studioId, req.body);
       res.status(201).json(newStudent);
     } catch (error: any) {
