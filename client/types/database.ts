@@ -4,362 +4,395 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
 export interface Database {
   public: {
     Tables: {
       users: {
         Row: {
-          id: string
-          email: string
-          full_name: string | null
-          phone_number: string | null
-          profile_image_url: string | null
-          role: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT'
-          studio_id: string | null
-          status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
-          last_login_at: string | null
-          login_count: number | null
-          preferences: Json | null
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          email: string;
+          full_name: string | null;
+          phone_number: string | null;
+          profile_image_url: string | null;
+          role: "ADMIN" | "INSTRUCTOR" | "STUDENT" | "PARENT";
+          studio_id: string | null;
+          status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+          last_login_at: string | null;
+          login_count: number | null;
+          preferences: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id: string
-          email: string
-          full_name?: string | null
-          phone_number?: string | null
-          profile_image_url?: string | null
-          role: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT'
-          studio_id?: string | null
-          status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
-          last_login_at?: string | null
-          login_count?: number | null
-          preferences?: Json | null
-          created_at?: string
-          updated_at?: string
-        }
+          id: string;
+          email: string;
+          full_name?: string | null;
+          phone_number?: string | null;
+          profile_image_url?: string | null;
+          role: "ADMIN" | "INSTRUCTOR" | "STUDENT" | "PARENT";
+          studio_id?: string | null;
+          status?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+          last_login_at?: string | null;
+          login_count?: number | null;
+          preferences?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          email?: string
-          full_name?: string | null
-          phone_number?: string | null
-          profile_image_url?: string | null
-          role?: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT'
-          studio_id?: string | null
-          status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
-          last_login_at?: string | null
-          login_count?: number | null
-          preferences?: Json | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
+          id?: string;
+          email?: string;
+          full_name?: string | null;
+          phone_number?: string | null;
+          profile_image_url?: string | null;
+          role?: "ADMIN" | "INSTRUCTOR" | "STUDENT" | "PARENT";
+          studio_id?: string | null;
+          status?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+          last_login_at?: string | null;
+          login_count?: number | null;
+          preferences?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       studios: {
         Row: {
-          id: string
-          name: string
-          description: string | null
-          admin_id: string
-          address: string | null
-          city: string | null
-          coordinates: unknown | null
-          contact_email: string | null
-          contact_phone: string | null
-          website_url: string | null
-          bank_account_holder: string | null
-          bank_account_number: string | null
-          bank_code: string | null
-          cancellation_deadline_hours: number | null
-          refund_percentage: number | null
-          is_active: boolean | null
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          name: string;
+          description: string | null;
+          admin_id: string;
+          address: string | null;
+          city: string | null;
+          coordinates: unknown | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          website_url: string | null;
+          bank_account_holder: string | null;
+          bank_account_number: string | null;
+          bank_code: string | null;
+          cancellation_deadline_hours: number | null;
+          refund_percentage: number | null;
+          is_active: boolean | null;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          admin_id: string
-          address?: string | null
-          city?: string | null
-          coordinates?: unknown | null
-          contact_email?: string | null
-          contact_phone?: string | null
-          website_url?: string | null
-          bank_account_holder?: string | null
-          bank_account_number?: string | null
-          bank_code?: string | null
-          cancellation_deadline_hours?: number | null
-          refund_percentage?: number | null
-          is_active?: boolean | null
-          created_at?: string
-          updated_at?: string
-        }
+          id?: string;
+          name: string;
+          description?: string | null;
+          admin_id: string;
+          address?: string | null;
+          city?: string | null;
+          coordinates?: unknown | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          website_url?: string | null;
+          bank_account_holder?: string | null;
+          bank_account_number?: string | null;
+          bank_code?: string | null;
+          cancellation_deadline_hours?: number | null;
+          refund_percentage?: number | null;
+          is_active?: boolean | null;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          admin_id?: string
-          address?: string | null
-          city?: string | null
-          coordinates?: unknown | null
-          contact_email?: string | null
-          contact_phone?: string | null
-          website_url?: string | null
-          bank_account_holder?: string | null
-          bank_account_number?: string | null
-          bank_code?: string | null
-          cancellation_deadline_hours?: number | null
-          refund_percentage?: number | null
-          is_active?: boolean | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
+          id?: string;
+          name?: string;
+          description?: string | null;
+          admin_id?: string;
+          address?: string | null;
+          city?: string | null;
+          coordinates?: unknown | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          website_url?: string | null;
+          bank_account_holder?: string | null;
+          bank_account_number?: string | null;
+          bank_code?: string | null;
+          cancellation_deadline_hours?: number | null;
+          refund_percentage?: number | null;
+          is_active?: boolean | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       classes: {
         Row: {
-          id: string
-          studio_id: string
-          category_id: string | null
-          name: string
-          description: string | null
-          instructor_id: string
-          day_of_week: number | null
-          start_time: string
-          end_time: string
-          timezone: string | null
-          location_room: string | null
-          location_building: string | null
-          max_capacity: number
-          current_enrollment: number | null
-          age_range_min: number | null
-          age_range_max: number | null
-          level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS' | null
-          price_ils: number
-          billing_cycle: 'MONTHLY' | 'SEMESTER' | 'YEARLY' | null
-          is_active: boolean | null
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          studio_id: string;
+          category_id: string | null;
+          name: string;
+          description: string | null;
+          instructor_id: string;
+          day_of_week: number | null;
+          start_time: string;
+          end_time: string;
+          timezone: string | null;
+          location_room: string | null;
+          location_building: string | null;
+          max_capacity: number;
+          current_enrollment: number | null;
+          age_range_min: number | null;
+          age_range_max: number | null;
+          level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "ALL_LEVELS" | null;
+          price_ils: number;
+          billing_cycle: "MONTHLY" | "SEMESTER" | "YEARLY" | null;
+          is_active: boolean | null;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id?: string
-          studio_id: string
-          category_id?: string | null
-          name: string
-          description?: string | null
-          instructor_id: string
-          day_of_week?: number | null
-          start_time: string
-          end_time: string
-          timezone?: string | null
-          location_room?: string | null
-          location_building?: string | null
-          max_capacity: number
-          current_enrollment?: number | null
-          age_range_min?: number | null
-          age_range_max?: number | null
-          level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS' | null
-          price_ils: number
-          billing_cycle?: 'MONTHLY' | 'SEMESTER' | 'YEARLY' | null
-          is_active?: boolean | null
-          created_at?: string
-          updated_at?: string
-        }
+          id?: string;
+          studio_id: string;
+          category_id?: string | null;
+          name: string;
+          description?: string | null;
+          instructor_id: string;
+          day_of_week?: number | null;
+          start_time: string;
+          end_time: string;
+          timezone?: string | null;
+          location_room?: string | null;
+          location_building?: string | null;
+          max_capacity: number;
+          current_enrollment?: number | null;
+          age_range_min?: number | null;
+          age_range_max?: number | null;
+          level?:
+            | "BEGINNER"
+            | "INTERMEDIATE"
+            | "ADVANCED"
+            | "ALL_LEVELS"
+            | null;
+          price_ils: number;
+          billing_cycle?: "MONTHLY" | "SEMESTER" | "YEARLY" | null;
+          is_active?: boolean | null;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          studio_id?: string
-          category_id?: string | null
-          name?: string
-          description?: string | null
-          instructor_id?: string
-          day_of_week?: number | null
-          start_time?: string
-          end_time?: string
-          timezone?: string | null
-          location_room?: string | null
-          location_building?: string | null
-          max_capacity?: number
-          current_enrollment?: number | null
-          age_range_min?: number | null
-          age_range_max?: number | null
-          level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS' | null
-          price_ils?: number
-          billing_cycle?: 'MONTHLY' | 'SEMESTER' | 'YEARLY' | null
-          is_active?: boolean | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
+          id?: string;
+          studio_id?: string;
+          category_id?: string | null;
+          name?: string;
+          description?: string | null;
+          instructor_id?: string;
+          day_of_week?: number | null;
+          start_time?: string;
+          end_time?: string;
+          timezone?: string | null;
+          location_room?: string | null;
+          location_building?: string | null;
+          max_capacity?: number;
+          current_enrollment?: number | null;
+          age_range_min?: number | null;
+          age_range_max?: number | null;
+          level?:
+            | "BEGINNER"
+            | "INTERMEDIATE"
+            | "ADVANCED"
+            | "ALL_LEVELS"
+            | null;
+          price_ils?: number;
+          billing_cycle?: "MONTHLY" | "SEMESTER" | "YEARLY" | null;
+          is_active?: boolean | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       enrollments: {
         Row: {
-          id: string
-          studio_id: string
-          student_id: string
-          class_id: string
-          parent_id: string | null
-          enrollment_date: string | null
-          status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | null
-          payment_status: 'PENDING' | 'PAID' | 'PARTIAL' | 'OVERDUE' | null
-          total_amount_due: number
-          total_amount_paid: number
-          start_date: string
-          end_date: string | null
-          cancellation_reason: string | null
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          studio_id: string;
+          student_id: string;
+          class_id: string;
+          parent_id: string | null;
+          enrollment_date: string | null;
+          status: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | null;
+          payment_status: "PENDING" | "PAID" | "PARTIAL" | "OVERDUE" | null;
+          total_amount_due: number;
+          total_amount_paid: number;
+          start_date: string;
+          end_date: string | null;
+          cancellation_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id?: string
-          studio_id: string
-          student_id: string
-          class_id: string
-          parent_id?: string | null
-          enrollment_date?: string | null
-          status?: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | null
-          payment_status?: 'PENDING' | 'PAID' | 'PARTIAL' | 'OVERDUE' | null
-          total_amount_due?: number
-          total_amount_paid?: number
-          start_date: string
-          end_date?: string | null
-          cancellation_reason?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          id?: string;
+          studio_id: string;
+          student_id: string;
+          class_id: string;
+          parent_id?: string | null;
+          enrollment_date?: string | null;
+          status?: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | null;
+          payment_status?: "PENDING" | "PAID" | "PARTIAL" | "OVERDUE" | null;
+          total_amount_due?: number;
+          total_amount_paid?: number;
+          start_date: string;
+          end_date?: string | null;
+          cancellation_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          studio_id?: string
-          student_id?: string
-          class_id?: string
-          parent_id?: string | null
-          enrollment_date?: string | null
-          status?: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | null
-          payment_status?: 'PENDING' | 'PAID' | 'PARTIAL' | 'OVERDUE' | null
-          total_amount_due?: number
-          total_amount_paid?: number
-          start_date?: string
-          end_date?: string | null
-          cancellation_reason?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
+          id?: string;
+          studio_id?: string;
+          student_id?: string;
+          class_id?: string;
+          parent_id?: string | null;
+          enrollment_date?: string | null;
+          status?: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | null;
+          payment_status?: "PENDING" | "PAID" | "PARTIAL" | "OVERDUE" | null;
+          total_amount_due?: number;
+          total_amount_paid?: number;
+          start_date?: string;
+          end_date?: string | null;
+          cancellation_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       payments: {
         Row: {
-          id: string
-          studio_id: string
-          enrollment_id: string | null
-          student_id: string
-          instructor_id: string | null
-          amount_ils: number
-          currency: string | null
-          payment_method: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK' | 'CASH' | null
-          transzilla_transaction_id: string | null
-          status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | null
-          invoice_number: string | null
-          invoice_url: string | null
-          due_date: string
-          paid_date: string | null
-          refund_date: string | null
-          refund_reason: string | null
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          studio_id: string;
+          enrollment_id: string | null;
+          student_id: string;
+          instructor_id: string | null;
+          amount_ils: number;
+          currency: string | null;
+          payment_method:
+            | "CREDIT_CARD"
+            | "BANK_TRANSFER"
+            | "CHECK"
+            | "CASH"
+            | null;
+          transzilla_transaction_id: string | null;
+          status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED" | null;
+          invoice_number: string | null;
+          invoice_url: string | null;
+          due_date: string;
+          paid_date: string | null;
+          refund_date: string | null;
+          refund_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id?: string
-          studio_id: string
-          enrollment_id?: string | null
-          student_id: string
-          instructor_id?: string | null
-          amount_ils: number
-          currency?: string | null
-          payment_method?: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK' | 'CASH' | null
-          transzilla_transaction_id?: string | null
-          status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | null
-          invoice_number?: string | null
-          invoice_url?: string | null
-          due_date: string
-          paid_date?: string | null
-          refund_date?: string | null
-          refund_reason?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          id?: string;
+          studio_id: string;
+          enrollment_id?: string | null;
+          student_id: string;
+          instructor_id?: string | null;
+          amount_ils: number;
+          currency?: string | null;
+          payment_method?:
+            | "CREDIT_CARD"
+            | "BANK_TRANSFER"
+            | "CHECK"
+            | "CASH"
+            | null;
+          transzilla_transaction_id?: string | null;
+          status?: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED" | null;
+          invoice_number?: string | null;
+          invoice_url?: string | null;
+          due_date: string;
+          paid_date?: string | null;
+          refund_date?: string | null;
+          refund_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          studio_id?: string
-          enrollment_id?: string | null
-          student_id?: string
-          instructor_id?: string | null
-          amount_ils?: number
-          currency?: string | null
-          payment_method?: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK' | 'CASH' | null
-          transzilla_transaction_id?: string | null
-          status?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | null
-          invoice_number?: string | null
-          invoice_url?: string | null
-          due_date?: string
-          paid_date?: string | null
-          refund_date?: string | null
-          refund_reason?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
+          id?: string;
+          studio_id?: string;
+          enrollment_id?: string | null;
+          student_id?: string;
+          instructor_id?: string | null;
+          amount_ils?: number;
+          currency?: string | null;
+          payment_method?:
+            | "CREDIT_CARD"
+            | "BANK_TRANSFER"
+            | "CHECK"
+            | "CASH"
+            | null;
+          transzilla_transaction_id?: string | null;
+          status?: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED" | null;
+          invoice_number?: string | null;
+          invoice_url?: string | null;
+          due_date?: string;
+          paid_date?: string | null;
+          refund_date?: string | null;
+          refund_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       attendance: {
         Row: {
-          id: string
-          studio_id: string
-          class_id: string
-          instructor_id: string
-          enrollment_id: string | null
-          student_id: string
-          session_date: string // YYYY-MM-DD format
-          status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | null
-          notes: string | null
-          recorded_at: string
-          recorded_by: string
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          studio_id: string;
+          class_id: string;
+          instructor_id: string;
+          enrollment_id: string | null;
+          student_id: string;
+          session_date: string; // YYYY-MM-DD format
+          status: "PRESENT" | "ABSENT" | "EXCUSED" | "LATE" | null;
+          notes: string | null;
+          recorded_at: string;
+          recorded_by: string;
+          created_at: string;
+          updated_at: string;
+        };
         Insert: {
-          id?: string
-          studio_id: string
-          class_id: string
-          instructor_id: string
-          enrollment_id?: string | null
-          student_id: string
-          session_date: string
-          status?: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | null
-          notes?: string | null
-          recorded_at?: string
-          recorded_by: string
-          created_at?: string
-          updated_at?: string
-        }
+          id?: string;
+          studio_id: string;
+          class_id: string;
+          instructor_id: string;
+          enrollment_id?: string | null;
+          student_id: string;
+          session_date: string;
+          status?: "PRESENT" | "ABSENT" | "EXCUSED" | "LATE" | null;
+          notes?: string | null;
+          recorded_at?: string;
+          recorded_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          studio_id?: string
-          class_id?: string
-          instructor_id?: string
-          enrollment_id?: string | null
-          student_id?: string
-          session_date?: string
-          status?: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE' | null
-          notes?: string | null
-          recorded_at?: string
-          recorded_by?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
-    }
-  }
+          id?: string;
+          studio_id?: string;
+          class_id?: string;
+          instructor_id?: string;
+          enrollment_id?: string | null;
+          student_id?: string;
+          session_date?: string;
+          status?: "PRESENT" | "ABSENT" | "EXCUSED" | "LATE" | null;
+          notes?: string | null;
+          recorded_at?: string;
+          recorded_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+    };
+    Functions: {
+      increment_enrollment: {
+        Args: {
+          class_id: string;
+        };
+        Returns: void;
+      };
+    };
+  };
 }

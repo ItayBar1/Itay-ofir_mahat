@@ -12,8 +12,8 @@ import {
   ChevronRight,
   Loader2
 } from "lucide-react";
-import { Student, UserRole, EnrollmentStatus } from "../types/types";
-import { supabase } from '../services/supabaseClient';
+import { Student, UserRole, EnrollmentStatus } from "../../types/types";
+import { supabase } from '../../services/supabaseClient';
 
 // מילון תרגום לסטטוסים
 const STATUS_TRANSLATION: Record<EnrollmentStatus, string> = {
