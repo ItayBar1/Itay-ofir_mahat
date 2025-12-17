@@ -1,50 +1,62 @@
-export type UserRole = 'ADMIN' | 'INSTRUCTOR' | 'STUDENT';
+// client/types/types.ts
+
+export type UserRole = 'ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT';
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
 export interface User {
   id: string;
-  name: string;
+  email: string;
+  full_name: string;
   role: UserRole;
-  avatar: string;
+  status: UserStatus;
+  studio_id: string | null;
+  phone_number?: string;
+  profile_image_url?: string;
+  created_at?: string;
 }
 
-export type EnrollmentStatus = 'Active' | 'Pending' | 'Suspended';
+export type EnrollmentStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
 
 export interface Student extends User {
-  email: string;
-  phone: string;
-  enrolledClass: string;
-  status: EnrollmentStatus;
+  enrolledClass?: string;
   joinDate: string;
-}
-
-export type ImageSize = '1K' | '2K' | '4K';
-export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
-
-export interface ImageGenerationConfig {
-  prompt: string;
-  size: ImageSize;
-  aspectRatio: AspectRatio;
-}
-
-export interface GeneratedImage {
-  url: string;
-  prompt: string;
-  timestamp: number;
-  config: ImageGenerationConfig;
 }
 
 export interface ClassSession {
   id: string;
   name: string;
-  instructor: string;
-  instructorAvatar: string;
-  startTime: string; // e.g., "09:00"
-  duration: number; // in minutes
-  dayOfWeek: string;
-  students: number;
-  capacity: number;
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
-  room: string;
-  category: string;
-  color: string; // Tailwind color class (e.g., 'indigo')
+  instructor_id: string;
+  instructor_name?: string;
+  instructor_avatar?: string;
+  start_time: string;
+  end_time: string;
+  day_of_week: number;
+  current_enrollment: number;
+  max_capacity: number;
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS';
+  location_room: string;
+  price_ils: number;
+  is_active: boolean;
+}
+
+export interface PaymentRecord {
+  id: string;
+  amount_ils: number;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  payment_method: string;
+  created_at: string;
+  invoice_number: string | null;
+  description?: string;
+}
+
+export interface DashboardStats {
+  totalStudents: number;
+  monthlyRevenue: number;
+  activeClasses: number;
+  avgAttendance: number;
+  chartData: Array<{
+    name: string;
+    revenue: number;
+    attendance: number;
+  }>;
 }

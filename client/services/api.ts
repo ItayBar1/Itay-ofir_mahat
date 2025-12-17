@@ -1,5 +1,6 @@
+// client/services/api.ts
 import axios from "axios";
-import { supabase } from "../supabaseClient"; // תוודא שיש לך קובץ שמייצא את הקליינט של סופבייס
+import { supabase } from "./supabaseClient";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -10,29 +11,34 @@ export const apiClient = axios.create({
   },
 });
 
-// Interceptor להוספת הטוקן לכל בקשה
-apiClient.interceptors.request.use(
-  async (config) => {
-    // שליפת ה-Session הנוכחי מ-Supabase
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+apiClient.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
   }
-);
+  return config;
+});
 
-// פונקציות עזר (Services)
+export const StudentService = {
+  getAll: (params?: any) => apiClient.get("/students", { params }).then(res => res.data),
+  getById: (id: string) => apiClient.get(`/students/${id}`).then(res => res.data),
+  create: (data: any) => apiClient.post("/students", data).then(res => res.data),
+};
+
 export const CourseService = {
-  getAll: () => apiClient.get("/courses").then((res) => res.data),
-  create: (data: any) =>
-    apiClient.post("/courses", data).then((res) => res.data),
-  // הוסף פונקציות נוספות כאן
+  getAll: (params?: any) => apiClient.get("/courses", { params }).then(res => res.data),
+  getById: (id: string) => apiClient.get(`/courses/${id}`).then(res => res.data),
+  create: (data: any) => apiClient.post("/courses", data).then(res => res.data),
+  getInstructors: () => apiClient.get("/courses/instructors").then(res => res.data),
+};
+
+export const PaymentService = {
+  getAll: () => apiClient.get("/payments").then(res => res.data),
+  createIntent: (data: { amount: number; currency?: string; description?: string }) => 
+    apiClient.post("/payments/create-intent", data).then(res => res.data),
+};
+
+export const DashboardService = {
+  getAdminStats: () => apiClient.get("/dashboard/admin").then(res => res.data),
+  getInstructorStats: () => apiClient.get("/dashboard/instructor").then(res => res.data),
 };
