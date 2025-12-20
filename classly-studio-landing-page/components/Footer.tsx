@@ -56,7 +56,7 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex items-center gap-4">
                 <Mail className="w-6 h-6 text-brand-orange flex-shrink-0" />
-                <span className="text-slate-400">info@ironpulse.co.il</span>
+                <span className="text-slate-400">info@classly-studio.co.il</span>
               </li>
             </ul>
           </div>
@@ -64,7 +64,7 @@ export const Footer: React.FC = () => {
 
         <div className="border-t border-slate-900 pt-8 text-center">
             <p className="text-slate-600 text-sm">
-                © {new Date().getFullYear()} IronPulse Studio. כל הזכויות שמורות.
+                © {new Date().getFullYear()} Classly Studio. כל הזכויות שמורות.
             </p>
         </div>
       </div>

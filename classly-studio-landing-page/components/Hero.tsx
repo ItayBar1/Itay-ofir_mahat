@@ -17,7 +17,7 @@ export const Hero: React.FC = () => {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center md:text-right flex-grow flex items-center pt-24 pb-32 md:pb-0">
         <div className="md:w-2/3 lg:w-1/2">
           <h2 className="text-brand-orange font-bold text-lg md:text-xl uppercase tracking-wider mb-4 animate-fade-in-up">
-            ברוכים הבאים ל-IRONPULSE
+            ברוכים הבאים ל-CLASSLY
           </h2>
           <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-6 drop-shadow-lg">
             הגוף שתמיד רצית <br />
