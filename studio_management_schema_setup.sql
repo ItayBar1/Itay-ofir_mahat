@@ -1,40 +1,40 @@
 -- התחלת טרנזקציה (אם חלק נכשל, הכל יבוטל)
 BEGIN;
 
+-- ניקוי טבלאות ישנות (מאפס את הדאטה-בייס כדי למנוע התנגשויות)
+DROP TABLE IF EXISTS public.audit_logs CASCADE;
+DROP TABLE IF EXISTS public.notifications CASCADE;
+DROP TABLE IF EXISTS public.schedule_sessions CASCADE;
+DROP TABLE IF EXISTS public.instructor_commissions CASCADE;
+DROP TABLE IF EXISTS public.payments CASCADE;
+DROP TABLE IF EXISTS public.attendance CASCADE;
+DROP TABLE IF EXISTS public.enrollments CASCADE;
+DROP TABLE IF EXISTS public.classes CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS public.branches CASCADE;
+DROP TABLE IF EXISTS public.studios CASCADE;
+
+-- ניקוי פונקציות ישנות (מונע שגיאות על שינוי שם פרמטרים)
+DROP FUNCTION IF EXISTS public.increment_enrollment(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.get_my_studio_id() CASCADE;
+
 -- הפעלת תוספים
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 ----------------------------------------------------------------
--- 1. יצירת טבלאות בסיס (USERS & STUDIOS)
+-- 1. יצירת טבלאות בסיס (USERS & STUDIOS & BRANCHES)
 ----------------------------------------------------------------
 
--- יצירת טבלת USERS
-CREATE TABLE IF NOT EXISTS public.users (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  full_name VARCHAR(255),
-  phone_number VARCHAR(20),
-  profile_image_url TEXT,
-  role VARCHAR(20) CHECK (role IN ('ADMIN', 'INSTRUCTOR', 'STUDENT', 'PARENT')) DEFAULT 'STUDENT',
-  studio_id UUID, 
-  status VARCHAR(20) CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')) DEFAULT 'ACTIVE',
-  last_login_at TIMESTAMP WITH TIME ZONE,
-  login_count INTEGER DEFAULT 0,
-  preferences JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT valid_email CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$')
-);
-
 -- יצירת טבלת STUDIOS
+-- שינוי: הוספת serial_number, הסרת כתובת/מיקום (עבר ל-Branches)
 CREATE TABLE IF NOT EXISTS public.studios (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(20) UNIQUE, -- מס' סידורי ייחודי לסטודיו
   description TEXT,
-  admin_id UUID NOT NULL REFERENCES public.users(id),
-  address VARCHAR(255),
-  city VARCHAR(100),
-  coordinates POINT,
+  admin_id UUID NOT NULL, -- FK יוגדר בהמשך
   contact_email VARCHAR(255),
   contact_phone VARCHAR(20),
   website_url TEXT,
@@ -48,13 +48,43 @@ CREATE TABLE IF NOT EXISTS public.studios (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- הוספת הקישור החסר (Circular Dependency)
-ALTER TABLE public.users
-DROP CONSTRAINT IF EXISTS fk_users_studio;
+-- יצירת טבלת BRANCHES (חדש!)
+CREATE TABLE IF NOT EXISTS public.branches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_id UUID NOT NULL REFERENCES public.studios(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL DEFAULT 'Main Branch',
+  address VARCHAR(255),
+  city VARCHAR(100),
+  coordinates POINT,
+  phone_number VARCHAR(20),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-ALTER TABLE public.users
-ADD CONSTRAINT fk_users_studio
-FOREIGN KEY (studio_id) REFERENCES public.studios(id) ON DELETE SET NULL;
+-- יצירת טבלת USERS
+-- שינוי: הוספת SUPER_ADMIN ל-role
+CREATE TABLE IF NOT EXISTS public.users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  full_name VARCHAR(255),
+  phone_number VARCHAR(20),
+  profile_image_url TEXT,
+  role VARCHAR(20) CHECK (role IN ('SUPER_ADMIN', 'ADMIN', 'INSTRUCTOR', 'STUDENT', 'PARENT')) DEFAULT 'STUDENT',
+  studio_id UUID REFERENCES public.studios(id) ON DELETE SET NULL, 
+  status VARCHAR(20) CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')) DEFAULT 'ACTIVE',
+  last_login_at TIMESTAMP WITH TIME ZONE,
+  login_count INTEGER DEFAULT 0,
+  preferences JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT valid_email CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$')
+);
+
+-- הוספת הקישור החסר (Circular Dependency) עבור admin_id בטבלת studios
+ALTER TABLE public.studios
+ADD CONSTRAINT fk_studios_admin
+FOREIGN KEY (admin_id) REFERENCES public.users(id);
 
 ----------------------------------------------------------------
 -- 2. יצירת שאר הטבלאות
@@ -76,9 +106,11 @@ CREATE TABLE IF NOT EXISTS public.categories (
 );
 
 -- CLASSES
+-- שינוי: הוספת branch_id
 CREATE TABLE IF NOT EXISTS public.classes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   studio_id UUID NOT NULL REFERENCES public.studios(id) ON DELETE CASCADE,
+  branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL, -- שיוך לסניף
   category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
   name VARCHAR(255) NOT NULL,
   description TEXT,
@@ -100,9 +132,6 @@ CREATE TABLE IF NOT EXISTS public.classes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- תיקון: ודא ש-category_id אינו NOT NULL (למקרה שהרצנו את זה קודם)
-ALTER TABLE public.classes ALTER COLUMN category_id DROP NOT NULL;
 
 
 -- ENROLLMENTS
@@ -235,10 +264,14 @@ CREATE INDEX IF NOT EXISTS idx_users_studio_id ON public.users(studio_id);
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
 
 CREATE INDEX IF NOT EXISTS idx_studios_admin_id ON public.studios(admin_id);
+CREATE INDEX IF NOT EXISTS idx_studios_serial ON public.studios(serial_number);
+
+CREATE INDEX IF NOT EXISTS idx_branches_studio_id ON public.branches(studio_id);
 
 CREATE INDEX IF NOT EXISTS idx_categories_studio_id ON public.categories(studio_id);
 
 CREATE INDEX IF NOT EXISTS idx_classes_studio_id ON public.classes(studio_id);
+CREATE INDEX IF NOT EXISTS idx_classes_branch_id ON public.classes(branch_id);
 CREATE INDEX IF NOT EXISTS idx_classes_instructor_id ON public.classes(instructor_id);
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_student_id ON public.enrollments(student_id);
@@ -248,6 +281,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_unique ON public.enrollments(s
 CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON public.attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_class_id ON public.attendance(class_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_unique ON public.attendance(enrollment_id, session_date);
+
+
 
 ----------------------------------------------------------------
 -- 4. פונקציות וטריגרים
@@ -265,12 +300,23 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
   default_studio_id UUID;
+  user_role VARCHAR;
 BEGIN
   -- שליפת הסטודיו הדיפולטי (הראשון שנוצר)
-  SELECT id INTO default_studio_id 
-  FROM public.studios 
-  ORDER BY created_at ASC 
-  LIMIT 1;
+  -- הערה: במערכת מרובת סניפים וסטודיו, המשתמש צריך להירשם עם קוד סטודיו (serial_number).
+  -- כאן אנו משאירים לוגיקה בסיסית: אם יש studio_id במטא-דאטה, השתמש בו.
+  
+  IF NEW.raw_user_meta_data->>'studio_id' IS NULL THEN
+     SELECT id INTO default_studio_id FROM public.studios ORDER BY created_at ASC LIMIT 1;
+  END IF;
+
+  -- Security: Prevent users from self-assigning privileged roles via metadata
+  -- Only allow STUDENT or PARENT. Everything else defaults to STUDENT.
+  IF (UPPER(NEW.raw_user_meta_data->>'role') IN ('ADMIN', 'INSTRUCTOR', 'SUPER_ADMIN')) THEN
+      user_role := 'STUDENT';
+  ELSE
+      user_role := COALESCE(UPPER(NEW.raw_user_meta_data->>'role'), 'STUDENT');
+  END IF;
 
   INSERT INTO public.users (
     id, 
@@ -285,7 +331,7 @@ BEGIN
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'full_name',
-    COALESCE(UPPER(NEW.raw_user_meta_data->>'role'), 'STUDENT'),
+    user_role,
     COALESCE(NEW.raw_user_meta_data->>'phone_number', NEW.raw_user_meta_data->>'phone', NEW.phone),
     'ACTIVE',
     COALESCE((NEW.raw_user_meta_data->>'studio_id')::UUID, default_studio_id)
@@ -312,20 +358,23 @@ END;
 $$ LANGUAGE plpgsql;
 
 ----------------------------------------------------------------
--- 5. הגדרת ROW LEVEL SECURITY (RLS) - גרסה מתוקנת ובטוחה
+-- 5. הגדרת ROW LEVEL SECURITY (RLS)
 ----------------------------------------------------------------
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.studios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
--- ניקוי מדיניות ישנה למניעת כפילויות ושגיאות
+
+-- ניקוי מדיניות ישנה
 DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
 DROP POLICY IF EXISTS "Users can view members of their own studio" ON public.users;
 DROP POLICY IF EXISTS "Admins can view studio users" ON public.users;
+DROP POLICY IF EXISTS "Users can view branches of their studio" ON public.branches;
 DROP POLICY IF EXISTS "Users can view active classes in their studio" ON public.classes;
 DROP POLICY IF EXISTS "Students can view active classes" ON public.classes;
 DROP POLICY IF EXISTS "Instructors can view own classes" ON public.classes;
@@ -338,20 +387,27 @@ DROP POLICY IF EXISTS "Instructors can view class attendance" ON public.attendan
 CREATE POLICY "Users can view own profile" ON public.users
 FOR SELECT USING (auth.uid() = id);
 
--- שימוש בפונקציה get_my_studio_id למניעת לולאה אינסופית
 CREATE POLICY "Users can view members of their own studio" ON public.users
 FOR SELECT USING (
   studio_id = public.get_my_studio_id()
   OR id = auth.uid()
+  OR (SELECT role FROM public.users WHERE id = auth.uid()) = 'SUPER_ADMIN'
 );
 
--- Classes Policies (קריאה)
+-- Branches Policies
+CREATE POLICY "Users can view branches of their studio" ON public.branches
+FOR SELECT USING (
+  studio_id = public.get_my_studio_id()
+  OR (SELECT role FROM public.users WHERE id = auth.uid()) = 'SUPER_ADMIN'
+);
+
+-- Classes Policies
 CREATE POLICY "Users can view active classes in their studio" ON public.classes
 FOR SELECT USING (
   studio_id = public.get_my_studio_id()
+  OR (SELECT role FROM public.users WHERE id = auth.uid()) = 'SUPER_ADMIN'
 );
 
--- Classes Policies (יצירה/עריכה - תיקון לשגיאת INSERT)
 CREATE POLICY "Admins and Instructors can insert classes" ON public.classes
 FOR INSERT WITH CHECK (
   (SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'INSTRUCTOR')
@@ -369,7 +425,7 @@ FOR UPDATE USING (
 CREATE POLICY "Users can view relevant enrollments" ON public.enrollments
 FOR SELECT USING (
   student_id = auth.uid()
-  OR (SELECT role FROM public.users WHERE id = auth.uid()) = 'ADMIN'
+  OR (SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SUPER_ADMIN')
   OR class_id IN (SELECT id FROM public.classes WHERE instructor_id = auth.uid())
 );
 
@@ -382,19 +438,22 @@ FOR SELECT USING (
   -- מדריך רואה נוכחות של השיעורים שלו
   OR class_id IN (SELECT id FROM public.classes WHERE instructor_id = auth.uid())
   
-  -- אדמין רואה הכל בסטודיו שלו (באמצעות הפונקציה הבטוחה)
+  -- אדמין רואה הכל בסטודיו שלו
   OR (
       public.get_my_studio_id() IS NOT NULL 
       AND studio_id = public.get_my_studio_id() 
       AND (SELECT role FROM public.users WHERE id = auth.uid()) = 'ADMIN'
   )
+  -- סופר אדמין
+  OR (SELECT role FROM public.users WHERE id = auth.uid()) = 'SUPER_ADMIN'
 );
 
--- FIX: Add missing INSERT policy to allow students to enroll themselves
 CREATE POLICY "Students can insert their own enrollments" ON public.enrollments
 FOR INSERT WITH CHECK (
     student_id = auth.uid()
-    AND studio_id = public.get_my_studio_id() -- מוודא שהרישום הוא לסטודיו של המשתמש המחובר
+    AND studio_id = public.get_my_studio_id()
 );
+
+
 
 COMMIT;
