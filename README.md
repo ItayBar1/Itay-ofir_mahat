@@ -201,4 +201,86 @@ npm test
 ```
 
 ### Logging
-A structured logging service is implemented for the client (`logger.ts`) to handle errors and important events securely (masking sensitive data). Server-side logging uses Pino.
+
+**Client-side:** A structured logging service is implemented (`client/src/services/logger.ts`) to handle errors and important events securely, masking sensitive data.
+
+**Server-side:** The API uses [Pino](https://getpino.io/) for high-performance structured logging. All logs are JSON-formatted in production and pretty-printed in development.
+
+#### Log Levels
+Set the `LOG_LEVEL` environment variable to control verbosity (default: `info`):
+- `trace` — very detailed debugging (method entry/exit, variable values)
+- `debug` — detailed debugging information
+- `info` — informational messages (request completion, successful operations)
+- `warn` — warnings that don't stop execution
+- `error` — errors that require attention
+- `fatal` — critical errors that terminate the application
+
+Example:
+```bash
+# Development with debug output
+LOG_LEVEL=debug npm run dev
+
+# Production with only errors
+LOG_LEVEL=error npm start
+```
+
+#### How to View Logs
+- **Development:** Logs are pretty-printed with colors via `pino-pretty` (automatically enabled when `NODE_ENV` is not `production` or `test`).
+- **Production:** Logs are JSON-formatted, suitable for log aggregation systems (e.g., CloudWatch, Datadog, Splunk). Each log entry includes:
+  - `level`: numeric log level
+  - `time`: ISO timestamp
+  - `service`: always `"classly-server"`
+  - `requestId`: unique ID per request (from header or auto-generated)
+  - `msg`: human-readable message
+  - Additional context fields (e.g., `userId`, `studioId`, `err`)
+
+#### Using the Logger
+
+**In controllers and services:**
+```typescript
+import { logger } from '../logger';
+
+// Simple logging
+logger.info('User registration started');
+logger.error({ err: error }, 'Failed to create user');
+
+// Structured logging with context
+logger.info({ userId: '123', studioId: '456' }, 'User enrolled in class');
+
+// Child loggers for scoped context
+const requestLog = logger.child({ controller: 'StudentController', method: 'getAll' });
+requestLog.info({ params: req.params }, 'Controller entry');
+requestLog.error({ err: error }, 'Error fetching students');
+```
+
+**Request-scoped logging:**
+The `requestLogger` middleware automatically attaches a logger to each request (`req.logger`). This logger includes:
+- `requestId` — unique ID for tracing the request
+- `path` — API endpoint
+- `method` — HTTP method
+- Automatic request duration tracking
+
+```typescript
+export const myController = async (req: Request, res: Response, next: NextFunction) => {
+  // Use req.logger for automatic request context
+  const requestLog = req.logger || logger.child({ controller: 'MyController' });
+  
+  requestLog.info({ customField: 'value' }, 'Processing request');
+  
+  try {
+    const result = await myService.doWork();
+    requestLog.info({ resultId: result.id }, 'Operation successful');
+    res.json(result);
+  } catch (error) {
+    // Error logs should include the error object with key 'err'
+    requestLog.error({ err: error }, 'Operation failed');
+    next(error);
+  }
+};
+```
+
+#### Best Practices
+- Always use structured logging: pass objects as the first argument, message as second.
+- Include relevant context (e.g., `userId`, `studioId`, `classId`) but never log sensitive data (passwords, tokens).
+- Use `req.logger` in controllers to maintain request traceability.
+- Log errors with the `err` key: `logger.error({ err: error }, 'message')` for proper stack trace serialization.
