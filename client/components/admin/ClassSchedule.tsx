@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from "react";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  Plus,
-  ChevronLeft,
-  Loader2,
-} from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, Loader2 } from "lucide-react";
 import { CourseService } from "../../services/api";
 import { ClassSession } from "../../types/types";
 import { AddClassModal } from "./AddClassModal";
 import { ClassCard } from "../common/ClassCard";
+
+import { ClassSession, User, Branch, Room } from "../../types/types";
 
 // --- Constants ---
 const DAY_MAP: Record<number, string> = {

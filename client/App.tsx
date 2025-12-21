@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./services/supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
+import { MobileDrawer } from "./components/MobileDrawer"; // Import the new component
+import LandingPage from "./components/LandingPage"; // Import the new LandingPage component
+
 // Admin components
 import { Dashboard } from "./components/admin/Dashboard";
 import { StudentManagement } from "./components/admin/StudentManagement";
@@ -18,12 +21,13 @@ import { Settings } from "./components/admin/Settings";
 import { InstructorDashboard } from "./components/instructor/InstructorDashboard";
 import { InstructorStudents } from "./components/instructor/InstructorStudents";
 import { InstructorSchedule } from "./components/instructor/InstructorSchedule";
+
 // Student components
 import { StudentDashboard } from "./components/student/StudentDashboard";
 import { BrowseCourses } from "./components/student/BrowseCourses";
 
 import { AuthPage } from "./components/AuthPage";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { UserService } from "./services/api";
 
 function App() {
@@ -31,6 +35,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [userRole, setUserRole] = useState<string>("STUDENT");
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // mobile drawer
+  const [showLogin, setShowLogin] = useState(false); // LandingPage vs AuthPage
+
   // Keep track of which tabs have been visited to lazy-load them
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(["dashboard"]));
 
@@ -38,12 +46,12 @@ function App() {
   const fetchUserRole = async () => {
     try {
       const user = await UserService.getMe();
-      if (user && user.role) {
+      if (user?.role) {
         setUserRole(user.role);
-        console.info('Role updated from backend', { role: user.role });
+        console.info("Role updated from backend", { role: user.role });
       }
     } catch (err) {
-      console.error('Failed to fetch user role from backend', err);
+      console.error("Failed to fetch user role from backend", err);
     }
   };
 
@@ -103,6 +111,7 @@ function App() {
   };
 
   const getComponentForTab = (tabName: string) => {
+    // ... (rest of the function remains the same)
     switch (tabName) {
       case "dashboard":
         if (userRole === 'SUPER_ADMIN') return <SuperAdminDashboard />;
@@ -143,22 +152,47 @@ function App() {
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600" /></div>;
-  if (!session) return <AuthPage />;
+
+  // If there's no session, decide whether to show the LandingPage or the AuthPage
+  if (!session) {
+    return showLogin ? <AuthPage /> : <LandingPage onLoginClick={() => setShowLogin(true)} />;
+  }
+
+  // List of all possible tabs for authenticated users
+  const allTabs = ["dashboard", "students", "schedule", "payments", "administration", "settings", "browse"];
 
   // List of all possible tabs to iterate or manage
   const allTabs = ["dashboard", "students", "schedule", "payments", "administration", "settings", "browse"];
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans" dir="rtl">
-      <Sidebar
+      {/* Desktop Sidebar - hidden on small screens */}
+      <div className="hidden md:block">
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onLogout={handleLogout}
+          userRole={userRole}
+        />
+      </div>
+      
+      {/* Mobile Drawer */}
+      <MobileDrawer
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        // @ts-ignore
         onLogout={handleLogout}
         userRole={userRole}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
       />
-      <main className="flex-1 mr-64 p-8">
-        <header className="flex justify-end mb-8">
+
+      <main className="flex-1 md:mr-64 p-4 sm:p-8">
+        <header className="flex justify-between items-center mb-8">
+          {/* Hamburger Menu - visible only on small screens */}
+          <button onClick={() => setIsDrawerOpen(true)} className="md:hidden p-2 text-slate-600 hover:text-indigo-600">
+            <Menu size={24} />
+          </button>
+          
           {/* User header reused from previous version */}
           <div className="flex items-center gap-4">
             <div className="text-left">

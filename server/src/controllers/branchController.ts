@@ -62,7 +62,8 @@ export class BranchController {
 
     static async delete(req: Request, res: Response, next: NextFunction) {
         try {
-            const adminId = req.user?.id;
+           const adminId = req.user?.id;
+            if (!adminId) return res.status(401).json({ error: "Unauthorized" });
             const { id } = req.params;
 
             const studio = await StudioService.getStudioByAdmin(adminId!);
