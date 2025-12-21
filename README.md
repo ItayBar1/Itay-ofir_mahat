@@ -238,6 +238,7 @@ LOG_LEVEL=error npm start
 
 **In controllers and services:**
 ```typescript
+// Import path depends on file location (e.g., '../logger' from controllers, './logger' from same directory)
 import { logger } from '../logger';
 
 // Simple logging
@@ -262,8 +263,8 @@ The `requestLogger` middleware automatically attaches a logger to each request (
 
 ```typescript
 export const myController = async (req: Request, res: Response, next: NextFunction) => {
-  // Use req.logger for automatic request context
-  const requestLog = req.logger || logger.child({ controller: 'MyController' });
+  // Use req.logger for automatic request context, fallback to child logger with controller and method
+  const requestLog = req.logger || logger.child({ controller: 'MyController', method: 'myMethod' });
   
   requestLog.info({ customField: 'value' }, 'Processing request');
   
