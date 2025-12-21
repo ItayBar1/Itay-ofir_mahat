@@ -16,7 +16,7 @@ import { PlatformAdministration } from "./components/super-admin/PlatformAdminis
 import { SuperAdminDashboard } from "./components/super-admin/SuperAdminDashboard";
 import { Settings } from "./components/admin/Settings";
 
-// Instructor components (new)
+// Instructor components
 import { InstructorDashboard } from "./components/instructor/InstructorDashboard";
 import { InstructorStudents } from "./components/instructor/InstructorStudents";
 import { InstructorSchedule } from "./components/instructor/InstructorSchedule";
@@ -107,7 +107,6 @@ function App() {
     };
   }, []);
 
-  // Update visited tabs when active tab changes
   useEffect(() => {
     setVisitedTabs(prev => {
       const newSet = new Set(prev);
@@ -121,7 +120,6 @@ function App() {
       console.info('User requested logout');
       await supabase.auth.signOut();
       setUserRole("STUDENT");
-      // Reset visited tabs on logout
       setVisitedTabs(new Set(["dashboard"]));
       setActiveTab("dashboard");
       console.info('User signed out successfully');
@@ -230,11 +228,8 @@ function App() {
           </div>
         </header>
         <div className="max-w-7xl mx-auto animate-fadeIn">
-          {/* Render content with Keep Alive strategy */}
           {allTabs.map(tab => {
-            // Only render if visited (lazy load) or active
             if (!visitedTabs.has(tab) && activeTab !== tab) return null;
-
             return (
               <div key={tab} className={activeTab === tab ? "block" : "hidden"}>
                 {getComponentForTab(tab)}
