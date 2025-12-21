@@ -2,9 +2,16 @@ import { supabaseAdmin } from '../config/supabase';
 import Stripe from 'stripe';
 import { logger } from '../logger';
 import { environment } from '../config/env';
+import { ApiVersion } from 'stripe/types/apiVersion';
 
+/**
+ * Stripe client configured with the latest stable API version.
+ * Using the ApiVersion constant from the Stripe SDK ensures type safety
+ * and automatic compatibility with the installed stripe package.
+ * @see https://stripe.com/docs/api/versioning
+ */
 const stripe = new Stripe(environment.stripe.secretKey || '', {
-  apiVersion: '2025-01-27.acacia' as any, // Ensure the version matches
+  apiVersion: ApiVersion,
 });
 
 export class PaymentService {
