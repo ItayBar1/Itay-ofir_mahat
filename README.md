@@ -278,6 +278,7 @@ export const myController = async (req: Request, res: Response, next: NextFuncti
   }
 };
 ```
+Visit the client on the Vite dev URL (default `http://localhost:5173`) and ensure the server port matches `CLIENT_URL` CORS configuration.
 
 #### Best Practices
 - Always use structured logging: pass objects as the first argument, message as second.
