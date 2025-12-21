@@ -10,11 +10,14 @@ import { Dashboard } from "./components/admin/Dashboard";
 import { StudentManagement } from "./components/admin/StudentManagement";
 import { ClassSchedule } from "./components/admin/ClassSchedule";
 import { Payments } from "./components/admin/Payments";
-import { Administration } from "./components/admin/Administration";
-import { PlatformAdministration } from "./components/admin/PlatformAdministration";
+import { Administration } from "./components/admin/Administration/Administration";
+// Super Admin components
+import { PlatformAdministration } from "./components/super-admin/PlatformAdministration";
+import { SuperAdminDashboard } from "./components/super-admin/SuperAdminDashboard";
 import { Settings } from "./components/admin/Settings";
 
-// Instructor components
+
+// Instructor components (new)
 import { InstructorDashboard } from "./components/instructor/InstructorDashboard";
 import { InstructorStudents } from "./components/instructor/InstructorStudents";
 import { InstructorSchedule } from "./components/instructor/InstructorSchedule";
@@ -24,24 +27,45 @@ import { StudentDashboard } from "./components/student/StudentDashboard";
 import { BrowseCourses } from "./components/student/BrowseCourses";
 
 import { AuthPage } from "./components/AuthPage";
-import { Loader2, Menu } from "lucide-react"; // Import Menu icon
+import { Loader2, Menu } from "lucide-react";
+import { UserService } from "./services/api";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [userRole, setUserRole] = useState<string>("STUDENT");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // State for mobile drawer
-  const [showLogin, setShowLogin] = useState(false); // State to toggle between LandingPage and AuthPage
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // mobile drawer
+  const [showLogin, setShowLogin] = useState(false); // LandingPage vs AuthPage
+
+  // Keep track of which tabs have been visited to lazy-load them
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(["dashboard"]));
+
+  // Fetch the latest role from the backend (authoritative source)
+  const fetchUserRole = async () => {
+    try {
+      const user = await UserService.getMe();
+      if (user?.role) {
+        setUserRole(user.role);
+        console.info("Role updated from backend", { role: user.role });
+      }
+    } catch (err) {
+      console.error("Failed to fetch user role from backend", err);
+    }
+  };
 
   useEffect(() => {
     console.info('App initialization started');
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user?.user_metadata?.role) {
-        setUserRole(session.user.user_metadata.role);
-        console.info('Initial role detected', { role: session.user.user_metadata.role });
+      if (session?.user) {
+        // Optimistically set from metadata first (fast)
+        if (session.user.user_metadata?.role) {
+          setUserRole(session.user.user_metadata.role);
+        }
+        // Then fetch authoritative role from DB (reliable)
+        fetchUserRole();
       }
       setLoading(false);
       console.info('Initial session check completed');
@@ -49,12 +73,11 @@ function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session?.user?.user_metadata?.role) {
-        setUserRole(session.user.user_metadata.role);
-        console.info('Auth state change updated role', { role: session.user.user_metadata.role });
-      } else {
-        // When user logs out, show the landing page again
-        setShowLogin(false);
+      if (session?.user) {
+        if (session.user.user_metadata?.role) {
+          setUserRole(session.user.user_metadata.role);
+        }
+        fetchUserRole();
       }
     });
 
@@ -64,6 +87,7 @@ function App() {
     };
   }, []);
 
+  // Update visited tabs when active tab changes
   useEffect(() => {
     setVisitedTabs(prev => {
       const newSet = new Set(prev);
@@ -77,6 +101,7 @@ function App() {
       console.info('User requested logout');
       await supabase.auth.signOut();
       setUserRole("STUDENT");
+      // Reset visited tabs on logout
       setVisitedTabs(new Set(["dashboard"]));
       setActiveTab("dashboard");
       console.info('User signed out successfully');
@@ -89,6 +114,7 @@ function App() {
     // ... (rest of the function remains the same)
     switch (tabName) {
       case "dashboard":
+        if (userRole === 'SUPER_ADMIN') return <SuperAdminDashboard />;
         if (userRole === 'ADMIN') return <Dashboard />;
         if (userRole === 'INSTRUCTOR') return <InstructorDashboard />;
         return <StudentDashboard />;
@@ -171,7 +197,7 @@ function App() {
                 {session.user.user_metadata.full_name || "משתמש"}
               </p>
               <p className="text-xs text-slate-500 uppercase">
-                {userRole === 'ADMIN' ? 'מנהל מערכת' : userRole === 'INSTRUCTOR' ? 'מדריך' : 'סטודנט'}
+                {userRole === 'SUPER_ADMIN' ? 'מנהל פלטפורמה' : userRole === 'ADMIN' ? 'מנהל מערכת' : userRole === 'INSTRUCTOR' ? 'מדריך' : 'סטודנט'}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
@@ -180,8 +206,11 @@ function App() {
           </div>
         </header>
         <div className="max-w-7xl mx-auto animate-fadeIn">
+          {/* Render content with Keep Alive strategy */}
           {allTabs.map(tab => {
+            // Only render if visited (lazy load) or active
             if (!visitedTabs.has(tab) && activeTab !== tab) return null;
+
             return (
               <div key={tab} className={activeTab === tab ? "block" : "hidden"}>
                 {getComponentForTab(tab)}
