@@ -1,34 +1,100 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { supabase } from "./services/supabaseClient";
 import { Session } from "@supabase/supabase-js";
 import { Sidebar } from "./components/Sidebar";
-import { MobileDrawer } from "./components/MobileDrawer"; // Import the new component
-import LandingPage from "./components/LandingPage"; // Import the new LandingPage component
-
-// Admin components
-import { Dashboard } from "./components/admin/Dashboard";
-import { StudentManagement } from "./components/admin/StudentManagement";
-import { ClassSchedule } from "./components/admin/ClassSchedule";
-import { Payments } from "./components/admin/Payments";
-import { Administration } from "./components/admin/Administration/Administration";
-// Super Admin components
-import { PlatformAdministration } from "./components/super-admin/PlatformAdministration";
-import { SuperAdminDashboard } from "./components/super-admin/SuperAdminDashboard";
-import { Settings } from "./components/admin/Settings";
-
-// Instructor components
-import { InstructorDashboard } from "./components/instructor/InstructorDashboard";
-import { InstructorStudents } from "./components/instructor/InstructorStudents";
-import { InstructorSchedule } from "./components/instructor/InstructorSchedule";
-
-// Student components
-import { StudentDashboard } from "./components/student/StudentDashboard";
-import { BrowseCourses } from "./components/student/BrowseCourses";
-
-import { AuthPage } from "./components/AuthPage";
-import { ResetPassword } from "./components/ResetPassword"; // Import ResetPassword
+import { MobileDrawer } from "./components/MobileDrawer";
 import { Loader2, Menu } from "lucide-react";
 import { UserService } from "./services/api";
+
+// --- Lazy Load Components (Code Splitting) ---
+
+// Landing & Auth (Default Exports assumed based on original code)
+const LandingPage = lazy(() => import("./components/LandingPage"));
+const ResetPassword = lazy(() =>
+  import("./components/ResetPassword").then((module) => ({
+    default: module.ResetPassword,
+  }))
+);
+
+// AuthPage was imported as named { AuthPage }
+const AuthPage = lazy(() =>
+  import("./components/AuthPage").then((module) => ({
+    default: module.AuthPage,
+  }))
+);
+
+// Admin components (Named Exports)
+const Dashboard = lazy(() =>
+  import("./components/admin/Dashboard").then((module) => ({
+    default: module.Dashboard,
+  }))
+);
+const StudentManagement = lazy(() =>
+  import("./components/admin/StudentManagement").then((module) => ({
+    default: module.StudentManagement,
+  }))
+);
+const ClassSchedule = lazy(() =>
+  import("./components/admin/ClassSchedule").then((module) => ({
+    default: module.ClassSchedule,
+  }))
+);
+const Payments = lazy(() =>
+  import("./components/admin/Payments").then((module) => ({
+    default: module.Payments,
+  }))
+);
+const Administration = lazy(() =>
+  import("./components/admin/Administration/Administration").then((module) => ({
+    default: module.Administration,
+  }))
+);
+const Settings = lazy(() =>
+  import("./components/admin/Settings").then((module) => ({
+    default: module.Settings,
+  }))
+);
+
+// Super Admin components (Named Exports)
+const PlatformAdministration = lazy(() =>
+  import("./components/super-admin/PlatformAdministration").then((module) => ({
+    default: module.PlatformAdministration,
+  }))
+);
+const SuperAdminDashboard = lazy(() =>
+  import("./components/super-admin/SuperAdminDashboard").then((module) => ({
+    default: module.SuperAdminDashboard,
+  }))
+);
+
+// Instructor components (Named Exports)
+const InstructorDashboard = lazy(() =>
+  import("./components/instructor/InstructorDashboard").then((module) => ({
+    default: module.InstructorDashboard,
+  }))
+);
+const InstructorStudents = lazy(() =>
+  import("./components/instructor/InstructorStudents").then((module) => ({
+    default: module.InstructorStudents,
+  }))
+);
+const InstructorSchedule = lazy(() =>
+  import("./components/instructor/InstructorSchedule").then((module) => ({
+    default: module.InstructorSchedule,
+  }))
+);
+
+// Student components (Named Exports)
+const StudentDashboard = lazy(() =>
+  import("./components/student/StudentDashboard").then((module) => ({
+    default: module.StudentDashboard,
+  }))
+);
+const BrowseCourses = lazy(() =>
+  import("./components/student/BrowseCourses").then((module) => ({
+    default: module.BrowseCourses,
+  }))
+);
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -40,24 +106,26 @@ function App() {
   const [showLogin, setShowLogin] = useState(false); // LandingPage vs AuthPage
 
   // Keep track of which tabs have been visited to lazy-load them
-  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(["dashboard"]));
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(
+    new Set(["dashboard"])
+  );
 
   // Check for reset password route
-  const isResetPassword = window.location.pathname === '/reset-password';
+  const isResetPassword = window.location.pathname === "/reset-password";
 
   // Accessibility Widget Injection
   useEffect(() => {
-    const isA11yEnabled = import.meta.env.VITE_A11Y_WIDGET_ENABLED === 'true';
+    const isA11yEnabled = import.meta.env.VITE_A11Y_WIDGET_ENABLED === "true";
     if (isA11yEnabled) {
-      const scriptId = 'a11y-widget-script';
+      const scriptId = "a11y-widget-script";
       if (!document.getElementById(scriptId)) {
-        const script = document.createElement('script');
+        const script = document.createElement("script");
         script.id = scriptId;
-        script.src = 'https://nagishli.co.il/widget.js'; // Example provider
+        script.src = "https://nagishli.co.il/widget.js"; // Example provider
         script.async = true;
         script.defer = true;
         document.body.appendChild(script);
-        console.info('Accessibility widget injected');
+        console.info("Accessibility widget injected");
       }
     }
   }, []);
@@ -76,7 +144,7 @@ function App() {
   };
 
   useEffect(() => {
-    console.info('App initialization started');
+    console.info("App initialization started");
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
@@ -88,10 +156,12 @@ function App() {
         fetchUserRole();
       }
       setLoading(false);
-      console.info('Initial session check completed');
+      console.info("Initial session check completed");
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
         if (session.user.user_metadata?.role) {
@@ -102,13 +172,13 @@ function App() {
     });
 
     return () => {
-      console.info('Cleaning up auth subscription');
+      console.info("Cleaning up auth subscription");
       subscription.unsubscribe();
     };
   }, []);
 
   useEffect(() => {
-    setVisitedTabs(prev => {
+    setVisitedTabs((prev) => {
       const newSet = new Set(prev);
       newSet.add(activeTab);
       return newSet;
@@ -117,51 +187,50 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      console.info('User requested logout');
+      console.info("User requested logout");
       await supabase.auth.signOut();
       setUserRole("STUDENT");
       setVisitedTabs(new Set(["dashboard"]));
       setActiveTab("dashboard");
-      console.info('User signed out successfully');
+      console.info("User signed out successfully");
     } catch (error) {
-      console.error('Failed to sign out user', error);
+      console.error("Failed to sign out user", error);
     }
   };
 
   const getComponentForTab = (tabName: string) => {
-    // ... (rest of the function remains the same)
     switch (tabName) {
       case "dashboard":
-        if (userRole === 'SUPER_ADMIN') return <SuperAdminDashboard />;
-        if (userRole === 'ADMIN') return <Dashboard />;
-        if (userRole === 'INSTRUCTOR') return <InstructorDashboard />;
+        if (userRole === "SUPER_ADMIN") return <SuperAdminDashboard />;
+        if (userRole === "ADMIN") return <Dashboard />;
+        if (userRole === "INSTRUCTOR") return <InstructorDashboard />;
         return <StudentDashboard activeTab={activeTab} />;
 
       case "students":
-        if (userRole === 'ADMIN') return <StudentManagement />;
-        if (userRole === 'INSTRUCTOR') return <InstructorStudents />;
+        if (userRole === "ADMIN") return <StudentManagement />;
+        if (userRole === "INSTRUCTOR") return <InstructorStudents />;
         return <div>אין הרשאה</div>;
 
       case "schedule":
-        if (userRole === 'ADMIN') return <ClassSchedule />;
-        if (userRole === 'INSTRUCTOR') return <InstructorSchedule />;
+        if (userRole === "ADMIN") return <ClassSchedule />;
+        if (userRole === "INSTRUCTOR") return <InstructorSchedule />;
         return <div>אין הרשאה</div>;
 
       case "payments":
-        if (userRole === 'ADMIN') return <Payments />;
+        if (userRole === "ADMIN") return <Payments />;
         return <div>אין הרשאה</div>;
 
       case "administration":
-        if (userRole === 'SUPER_ADMIN') return <PlatformAdministration />;
-        if (userRole === 'ADMIN') return <Administration />;
+        if (userRole === "SUPER_ADMIN") return <PlatformAdministration />;
+        if (userRole === "ADMIN") return <Administration />;
         return <div>אין הרשאה</div>;
 
       case "settings":
-        if (userRole === 'ADMIN') return <Settings />;
+        if (userRole === "ADMIN") return <Settings />;
         return <div>אין הרשאה</div>;
 
       case "browse":
-        if (userRole === 'STUDENT') return <BrowseCourses />;
+        if (userRole === "STUDENT") return <BrowseCourses />;
         return <div>אין הרשאה</div>;
 
       default:
@@ -169,19 +238,57 @@ function App() {
     }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600" /></div>;
+  if (loading)
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin w-10 h-10 text-indigo-600" />
+      </div>
+    );
 
+  // Render Suspense fallback for Auth/Reset pages
   if (isResetPassword) {
-    return <ResetPassword onSuccess={() => window.location.href = '/'} />;
+    return (
+      <Suspense
+        fallback={
+          <div className="h-screen flex items-center justify-center">
+            <Loader2 className="animate-spin w-10 h-10 text-indigo-600" />
+          </div>
+        }
+      >
+        <ResetPassword onSuccess={() => (window.location.href = "/")} />
+      </Suspense>
+    );
   }
 
   // If there's no session, decide whether to show the LandingPage or the AuthPage
   if (!session) {
-    return showLogin ? <AuthPage /> : <LandingPage onLoginClick={() => setShowLogin(true)} />;
+    return (
+      <Suspense
+        fallback={
+          <div className="h-screen flex items-center justify-center">
+            <Loader2 className="animate-spin w-10 h-10 text-indigo-600" />
+          </div>
+        }
+      >
+        {showLogin ? (
+          <AuthPage />
+        ) : (
+          <LandingPage onLoginClick={() => setShowLogin(true)} />
+        )}
+      </Suspense>
+    );
   }
 
   // List of all possible tabs for authenticated users
-  const allTabs = ["dashboard", "students", "schedule", "payments", "administration", "settings", "browse"];
+  const allTabs = [
+    "dashboard",
+    "students",
+    "schedule",
+    "payments",
+    "administration",
+    "settings",
+    "browse",
+  ];
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans" dir="rtl">
@@ -194,7 +301,7 @@ function App() {
           userRole={userRole}
         />
       </div>
-      
+
       {/* Mobile Drawer */}
       <MobileDrawer
         activeTab={activeTab}
@@ -208,10 +315,13 @@ function App() {
       <main className="flex-1 md:mr-64 p-4 sm:p-8">
         <header className="flex justify-end items-center mb-8">
           {/* Hamburger Menu - visible only on small screens */}
-          <button onClick={() => setIsDrawerOpen(true)} className="md:hidden p-2 text-slate-600 hover:text-indigo-600">
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="md:hidden p-2 text-slate-600 hover:text-indigo-600"
+          >
             <Menu size={24} />
           </button>
-          
+
           {/* User header reused from previous version */}
           <div className="flex items-center gap-4">
             <div className="text-left">
@@ -219,7 +329,13 @@ function App() {
                 {session.user.user_metadata.full_name || "משתמש"}
               </p>
               <p className="text-xs text-slate-500 uppercase">
-                {userRole === 'SUPER_ADMIN' ? 'מנהל פלטפורמה' : userRole === 'ADMIN' ? 'מנהל מערכת' : userRole === 'INSTRUCTOR' ? 'מדריך' : 'סטודנט'}
+                {userRole === "SUPER_ADMIN"
+                  ? "מנהל פלטפורמה"
+                  : userRole === "ADMIN"
+                  ? "מנהל מערכת"
+                  : userRole === "INSTRUCTOR"
+                  ? "מדריך"
+                  : "סטודנט"}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
@@ -227,12 +343,23 @@ function App() {
             </div>
           </div>
         </header>
+
         <div className="max-w-7xl mx-auto animate-fadeIn">
-          {allTabs.map(tab => {
+          {allTabs.map((tab) => {
+            // Keep tabs alive if they were visited
             if (!visitedTabs.has(tab) && activeTab !== tab) return null;
+
             return (
               <div key={tab} className={activeTab === tab ? "block" : "hidden"}>
-                {getComponentForTab(tab)}
+                <Suspense
+                  fallback={
+                    <div className="flex h-64 items-center justify-center">
+                      <Loader2 className="animate-spin w-8 h-8 text-indigo-600" />
+                    </div>
+                  }
+                >
+                  {getComponentForTab(tab)}
+                </Suspense>
               </div>
             );
           })}
