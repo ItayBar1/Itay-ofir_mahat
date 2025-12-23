@@ -121,7 +121,7 @@ export const EnrollmentService = {
   // --- תוקן: שימוש בנתיבים הנכונים מול השרת ---
 
   // הרשמה לקורס (Student Action) - תוקן מ-/courses/enroll
-  register: (courseId: string) => apiClient.post('/enrollments/register', { courseId }).then(res => res.data),
+  register: (courseId: string) => apiClient.post('/enrollments/register', { classId: courseId }).then(res => res.data),
 
   // שליפת הקורסים שהתלמיד רשום אליהם - תוקן מ-/courses/enrolled
   getMyEnrollments: () => apiClient.get<ClassSession[]>('/enrollments/my-enrollments').then(res => res.data),
@@ -136,7 +136,7 @@ export const PaymentService = {
 
   // יצירת כוונת תשלום
   createIntent: (data: { amount: number; currency?: string; description?: string }) =>
-    apiClient.post<{ clientSecret: string }>('/payment/create-intent', data).then(res => res.data),
+    apiClient.post<{ clientSecret: string }>('/payments/create-intent', data).then(res => res.data),
 };
 
 export const DashboardService = {
