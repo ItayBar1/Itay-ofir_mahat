@@ -92,12 +92,23 @@ export class EnrollmentController {
       // Capture ID for potential rollback
       createdEnrollmentId = enrollment.id;
 
-      // If the course is free (rare), we could complete without payment
+      // --- FREE COURSE HANDLING ---
+      // If the course is free, we skip payment processing entirely
       if (courseDetails.price === 0) {
-        // Future: set to ACTIVE when free (assuming paid for now)
+        requestLog.info(
+          { enrollmentId: enrollment.id },
+          "Free course registration completed automatically"
+        );
+        return res.status(201).json({
+          message: "Registration completed successfully",
+          enrollmentId: enrollment.id,
+          status: "active",
+          amount: 0,
+        });
       }
+      // ----------------------------
 
-      // 2. Create a Stripe Payment Intent
+      // 2. Create a Stripe Payment Intent (ONLY if price > 0)
       const paymentIntent = await PaymentService.createIntent(
         courseDetails.price,
         "ils",
@@ -137,7 +148,6 @@ export class EnrollmentController {
       );
 
       // --- Rollback Logic ---
-      // If enrollment was created but subsequent steps (payment) failed, cancel it.
       if (createdEnrollmentId) {
         requestLog.warn(
           { enrollmentId: createdEnrollmentId },
@@ -150,7 +160,6 @@ export class EnrollmentController {
             "Rollback successful: Enrollment cancelled"
           );
         } catch (rollbackError) {
-          // Log critical failure if rollback also fails
           requestLog.error(
             { err: rollbackError, enrollmentId: createdEnrollmentId },
             "CRITICAL: Failed to rollback enrollment after error"

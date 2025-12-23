@@ -22,6 +22,7 @@ export class EnrollmentService {
       { studioId, studentId, classId, status, paymentStatus },
       "Enrolling student to class"
     );
+
     // 1. Fetch course details (capacity and pricing)
     const { data: course, error: courseError } = await supabaseAdmin
       .from("classes")
@@ -60,6 +61,13 @@ export class EnrollmentService {
       throw new Error("Student is already enrolled in this course");
     }
 
+    // --- FREE COURSE LOGIC ---
+    // If price is 0, force status to ACTIVE and PAID regardless of input
+    const isFree = course.price_ils === 0;
+    const finalStatus = isFree ? "ACTIVE" : status;
+    const finalPaymentStatus = isFree ? "PAID" : paymentStatus;
+    // -------------------------
+
     // 4. Create enrollment
     const { data: enrollment, error: enrollError } = await supabaseAdmin
       .from("enrollments")
@@ -68,8 +76,8 @@ export class EnrollmentService {
           studio_id: studioId,
           student_id: studentId,
           class_id: classId,
-          status: status,
-          payment_status: paymentStatus,
+          status: finalStatus,
+          payment_status: finalPaymentStatus,
           start_date: new Date(),
           total_amount_due: course.price_ils,
           notes: notes,
@@ -84,7 +92,8 @@ export class EnrollmentService {
     }
 
     // 5. Update enrollment counters
-    if (status === "ACTIVE" || status === "PENDING") {
+    // Increment if status is ACTIVE or PENDING (which covers both paid and free flows)
+    if (finalStatus === "ACTIVE" || finalStatus === "PENDING") {
       const { error: rpcError } = await supabaseAdmin.rpc(
         "increment_enrollment_count",
         { row_id: classId }
@@ -227,7 +236,6 @@ export class EnrollmentService {
           "RPC decrement failed"
         );
       }
-      // Fallback if RPC doesn't exist: fetch class -> update current - 1
     }
   }
 
