@@ -2,7 +2,6 @@ import { supabaseAdmin } from '../config/supabase';
 import Stripe from 'stripe';
 import { logger } from '../logger';
 import { environment } from '../config/env';
-import { ApiVersion } from 'stripe/types/apiVersion';
 
 /**
  * Stripe client configured with the latest stable API version.
@@ -11,9 +10,8 @@ import { ApiVersion } from 'stripe/types/apiVersion';
  * @see https://stripe.com/docs/api/versioning
  */
 const stripe = new Stripe(environment.stripe.secretKey || '', {
-  apiVersion: ApiVersion,
+  apiVersion: '2025-12-15.clover', 
 });
-
 export class PaymentService {
   
   /**

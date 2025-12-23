@@ -1,79 +1,190 @@
-import React, { useEffect, useState } from 'react';
-import { CourseService } from '../../services/api';
-import { Loader2 } from 'lucide-react';
-import { ClassSession } from '../../types/types';
-import { ClassCard } from '../common/ClassCard';
+import React, { useEffect, useState } from "react";
+import { CourseService } from "../../services/api";
+import { Loader2, Calendar, Filter, X } from "lucide-react";
+import { ClassCard } from "../common/ClassCard";
 
 export const InstructorSchedule: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<number | "all">("all");
 
-  // Helper to format class for display (similar to Admin Schedule but simpler)
-  const formatClassForDisplay = (cls: any) => {
-    const today = "1970-01-01";
-    const start = new Date(`${today}T${cls.start_time}`);
-    const end = new Date(`${today}T${cls.end_time}`);
-    const duration = (end.getTime() - start.getTime()) / 60000;
-
-    return {
-      id: cls.id,
-      name: cls.name,
-      // Instructor sees their own schedule, so instructor name is redundant but kept for layout consistency
-      instructor: cls.instructor?.full_name,
-      startTime: cls.start_time.substring(0, 5),
-      duration: duration,
-      dayOfWeek: cls.day_of_week, // Keep as number for sorting
-      students: cls.current_enrollment || 0,
-      capacity: cls.max_capacity,
-      level: cls.level,
-      room: cls.location_room || 'לא צוין מיקום',
-      color: 'indigo',
-    };
-  };
+  const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
   useEffect(() => {
     const fetchMySchedule = async () => {
       try {
         const data = await CourseService.getInstructorCourses();
+
         if (data) {
-          // Sort by Day then Time
-          const sorted = data.sort((a, b) => {
-            if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+          const formatClassForDisplay = (cls: any) => {
+            if (!cls) return null;
+
+            // לוג לבדיקה - תראה ב-Console מה השמות האמיתיים של השדות מהשרת
+            console.log("Raw class object:", cls);
+
+            const today = "1970-01-01";
+            // וידוא שמות שדות (תמיכה גם ב-snake_case וגם ב-CamelCase)
+            const startStr = cls.start_time || cls.startTime || "00:00";
+            const endStr = cls.end_time || cls.endTime || "00:00";
+            const day =
+              cls.day_of_week !== undefined ? cls.day_of_week : cls.dayOfWeek;
+
+            const start = new Date(`${today}T${startStr}`);
+            const end = new Date(`${today}T${endStr}`);
+            const duration = (end.getTime() - start.getTime()) / 60000;
+            const dayOfWeekIndex = cls.day_of_week;
+
+            return {
+              id: cls.id,
+              name: cls.name,
+              instructor: cls.instructor?.full_name || "אני",
+              instructorAvatar: (cls.instructor?.full_name || "א")
+                .charAt(0)
+                .toUpperCase(),
+              startTime: startStr.substring(0, 5),
+              duration: duration,
+              dayOfWeek: dayOfWeekIndex,
+              dayName: days[dayOfWeekIndex],
+              students: cls.current_enrollment || 0,
+              capacity: cls.max_capacity,
+              level: cls.level,
+              room: cls.location_room || "לא צוין",
+            };
+          };
+
+          const sorted = data.sort((a: any, b: any) => {
+            if (a.day_of_week !== b.day_of_week)
+              return a.day_of_week - b.day_of_week;
             return a.start_time.localeCompare(b.start_time);
           });
-          const formatted = sorted.map(formatClassForDisplay);
-          setClasses(formatted);
+
+          setClasses(sorted.map(formatClassForDisplay).filter(Boolean));
         }
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching schedule:", err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchMySchedule();
   }, []);
 
-  const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const displayedClasses =
+    selectedDay === "all"
+      ? classes
+      : classes.filter((cls) => cls.dayOfWeek === selectedDay);
 
-  if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800">מערכת השעות שלי</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classes.map((cls) => (
-          <div key={cls.id} className="relative">
-            {/* Add a day header above the card since this is a grid view, unlike the day-tab view in admin */}
-            <div className="mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
-                {days[cls.dayOfWeek]}
-              </span>
-            </div>
-            <ClassCard session={cls} isAdmin={false} />
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              מערכת השעות שלי
+            </h2>
+            <p className="text-slate-500 mt-1">
+              {selectedDay === "all"
+                ? `מציג את כל ${classes.length} השיעורים שלך`
+                : `מציג ${displayedClasses.length} שיעורים ליום ${
+                    days[selectedDay as number]
+                  }`}
+            </p>
           </div>
-        ))}
-        {classes.length === 0 && (
-          <p className="col-span-3 text-center text-slate-500 py-10">אין שיעורים משובצים במערכת.</p>
+
+          {selectedDay !== "all" && (
+            <button
+              onClick={() => setSelectedDay("all")}
+              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+            >
+              <X className="h-4 w-4 ml-1" />
+              הצג הכל
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <div className="flex items-center text-slate-500 ml-2">
+            <Filter className="h-4 w-4 ml-1" />
+            <span className="text-sm font-medium">סינון:</span>
+          </div>
+
+          <button
+            onClick={() => setSelectedDay("all")}
+            className={`
+              px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border
+              ${
+                selectedDay === "all"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+              }
+            `}
+          >
+            הכל
+          </button>
+
+          {days.map((day, index) => {
+            const hasClasses = classes.some((c) => c.dayOfWeek === index);
+            if (!hasClasses && selectedDay !== index) return null;
+
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(index)}
+                className={`
+                  px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border
+                  ${
+                    selectedDay === index
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                  }
+                `}
+              >
+                {day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="border-t border-slate-200 pt-6">
+        {displayedClasses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+            {displayedClasses.map((cls) => (
+              // ✅ התיקון כאן: העברת הנתונים בתוך prop בשם session
+              <ClassCard key={cls.id} session={cls} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 text-center">
+            <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+              <Calendar className="h-8 w-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">
+              לא נמצאו שיעורים
+            </h3>
+            <p className="text-slate-500 max-w-sm mt-1">
+              {selectedDay === "all"
+                ? "עדיין לא שובצת לשיעורים במערכת."
+                : `אין שיעורים מתוכננים ליום ${days[selectedDay as number]}.`}
+            </p>
+            {selectedDay !== "all" && (
+              <button
+                onClick={() => setSelectedDay("all")}
+                className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium text-sm"
+              >
+                חזור לרשימה המלאה
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
