@@ -97,7 +97,7 @@ export const StudentService = {
       `
       )
       .eq("class.instructor_id", instructorId)
-      .eq("status", "ACTIVE");
+      .in("status", ["ACTIVE", "PENDING"]);
 
     if (error) throw error;
 

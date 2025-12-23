@@ -118,7 +118,7 @@ export const DashboardService = {
         .from("enrollments")
         .select("student_id, class:classes!inner(instructor_id)")
         .eq("class.instructor_id", instructorId)
-        .eq("status", "ACTIVE");
+        .in("status", ["ACTIVE", "PENDING"]);
 
       const [coursesRes, studentsRes] = await Promise.all([
         coursesPromise,

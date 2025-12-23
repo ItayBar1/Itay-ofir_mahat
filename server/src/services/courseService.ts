@@ -1,5 +1,5 @@
-import { supabaseAdmin } from '../config/supabase';
-import { logger } from '../logger';
+import { supabaseAdmin } from "../config/supabase";
+import { logger } from "../logger";
 
 type CourseFilters = {
   category_id?: string | number;
@@ -7,32 +7,36 @@ type CourseFilters = {
 };
 
 export class CourseService {
-  
   /**
    * Get all courses with optional filters
    */
   static async getAllCourses(userRole?: string, filters: CourseFilters = {}) {
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'getAllCourses' });
-    serviceLogger.info({ userRole, filters }, 'Fetching all courses');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "getAllCourses",
+    });
+    serviceLogger.info({ userRole, filters }, "Fetching all courses");
 
-    let query = supabaseAdmin.from('classes').select('*, instructor:users(full_name)');
+    let query = supabaseAdmin
+      .from("classes")
+      .select("*, instructor:users(full_name)");
 
     // If student, only show active courses
-    if (userRole === 'STUDENT') {
-      query = query.eq('is_active', true);
+    if (userRole === "STUDENT") {
+      query = query.eq("is_active", true);
     }
 
     // Apply generic filters if provided (e.g., category_id)
     if (filters.category_id) {
-        query = query.eq('category_id', filters.category_id);
+      query = query.eq("category_id", filters.category_id);
     }
 
     const { data, error } = await query;
     if (error) {
-      serviceLogger.error({ err: error }, 'Failed to fetch courses');
+      serviceLogger.error({ err: error }, "Failed to fetch courses");
       throw new Error(error.message);
     }
-    serviceLogger.info({ count: data?.length }, 'Courses fetched successfully');
+    serviceLogger.info({ count: data?.length }, "Courses fetched successfully");
     return data;
   }
 
@@ -41,105 +45,124 @@ export class CourseService {
    * Note: Need to verify student isn't already enrolled in logic later
    */
   static async getAvailableForStudent(studentId: string) {
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'getAvailableForStudent' });
-    serviceLogger.info({ studentId }, 'Fetching available courses for student');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "getAvailableForStudent",
+    });
+    serviceLogger.info({ studentId }, "Fetching available courses for student");
     // Fetch active courses.
     // Future improvement: filter out courses the student is already enrolled in
     const { data, error } = await supabaseAdmin
-      .from('classes')
-      .select('*, instructor:users(full_name)')
-      .eq('is_active', true)
-      .gt('max_capacity', supabaseAdmin.rpc('current_enrollment_check')); // Or filter in code
+      .from("classes")
+      .select("*, instructor:users(full_name)")
+      .eq("is_active", true); // תביא את כל הפעילים
 
-    // Currently returns active courses; filtering already-enrolled students can be added later
-    if (error) {
-      serviceLogger.error({ err: error }, 'Failed to fetch available courses');
-      throw new Error(error.message);
-    }
-    serviceLogger.info({ count: data?.length }, 'Available courses fetched');
-    return data;
+    if (error) throw error;
+
+    // סנן ב-JS קורסים מלאים
+    const availableCourses = data.filter(
+      (course) => course.current_enrollment < course.max_capacity
+    );
+
+    return availableCourses;
   }
 
   static async getCourseById(id: string) {
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'getCourseById' });
-    serviceLogger.info({ id }, 'Fetching course by id');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "getCourseById",
+    });
+    serviceLogger.info({ id }, "Fetching course by id");
     const { data, error } = await supabaseAdmin
-      .from('classes')
-      .select('*, instructor:users(full_name, profile_image_url), studio:studios(name)')
-      .eq('id', id)
+      .from("classes")
+      .select(
+        "*, instructor:users(full_name, profile_image_url), studio:studios(name)"
+      )
+      .eq("id", id)
       .single();
 
     if (error) {
-      serviceLogger.error({ err: error }, 'Failed to fetch course by id');
+      serviceLogger.error({ err: error }, "Failed to fetch course by id");
       throw new Error(error.message);
     }
     return data;
   }
 
   static async getCoursesByInstructor(instructorId: string) {
-
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'getCoursesByInstructor' });
-    serviceLogger.info({ instructorId }, 'Fetching courses by instructor');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "getCoursesByInstructor",
+    });
+    serviceLogger.info({ instructorId }, "Fetching courses by instructor");
     const { data, error } = await supabaseAdmin
-      .from('classes')
-      .select('*')
-      .eq('instructor_id', instructorId)
-      .order('day_of_week', { ascending: true });
+      .from("classes")
+      .select("*")
+      .eq("instructor_id", instructorId)
+      .order("day_of_week", { ascending: true });
 
     if (error) {
-      serviceLogger.error({ err: error }, 'Failed to fetch instructor courses');
+      serviceLogger.error({ err: error }, "Failed to fetch instructor courses");
       throw new Error(error.message);
     }
     return data;
   }
 
   static async createCourse(courseData: Record<string, unknown>) {
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'createCourse' });
-    serviceLogger.info({ courseData }, 'Creating course');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "createCourse",
+    });
+    serviceLogger.info({ courseData }, "Creating course");
     const { data, error } = await supabaseAdmin
-      .from('classes')
+      .from("classes")
       .insert([courseData])
       .select()
       .single();
 
     if (error) {
-      serviceLogger.error({ err: error }, 'Failed to create course');
+      serviceLogger.error({ err: error }, "Failed to create course");
       throw new Error(error.message);
     }
     return data;
   }
 
   static async updateCourse(id: string, updates: Record<string, unknown>) {
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'updateCourse' });
-    serviceLogger.info({ id, updates }, 'Updating course');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "updateCourse",
+    });
+    serviceLogger.info({ id, updates }, "Updating course");
     const { data, error } = await supabaseAdmin
-      .from('classes')
+      .from("classes")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
     if (error) {
-      serviceLogger.error({ err: error }, 'Failed to update course');
+      serviceLogger.error({ err: error }, "Failed to update course");
       throw new Error(error.message);
     }
     return data;
   }
 
   static async softDeleteCourse(id: string) {
-    const serviceLogger = logger.child({ service: 'CourseService', method: 'softDeleteCourse' });
-    serviceLogger.info({ id }, 'Soft deleting course');
+    const serviceLogger = logger.child({
+      service: "CourseService",
+      method: "softDeleteCourse",
+    });
+    serviceLogger.info({ id }, "Soft deleting course");
     // Soft delete: set is_active to false
     const { error } = await supabaseAdmin
-      .from('classes')
+      .from("classes")
       .update({ is_active: false })
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
-      serviceLogger.error({ err: error }, 'Failed to soft delete course');
+      serviceLogger.error({ err: error }, "Failed to soft delete course");
       throw new Error(error.message);
     }
-    serviceLogger.info({ id }, 'Course deactivated');
+    serviceLogger.info({ id }, "Course deactivated");
     return true;
   }
 }

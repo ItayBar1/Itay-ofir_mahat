@@ -91,27 +91,6 @@ export class EnrollmentService {
       throw new Error(enrollError.message);
     }
 
-    // 5. Update enrollment counters
-    // Increment if status is ACTIVE or PENDING (which covers both paid and free flows)
-    if (finalStatus === "ACTIVE" || finalStatus === "PENDING") {
-      const { error: rpcError } = await supabaseAdmin.rpc(
-        "increment_enrollment_count",
-        { row_id: classId }
-      );
-
-      // Fallback if the RPC is unavailable or fails
-      if (rpcError) {
-        serviceLogger.warn(
-          { err: rpcError, classId },
-          "RPC increment failed, applying fallback"
-        );
-        await supabaseAdmin
-          .from("classes")
-          .update({ current_enrollment: course.current_enrollment + 1 })
-          .eq("id", classId);
-      }
-    }
-
     // Return enrollment alongside pricing details for payment
     return {
       enrollment,
@@ -220,22 +199,6 @@ export class EnrollmentService {
     if (error) {
       serviceLogger.error({ err: error }, "Failed to cancel enrollment");
       throw new Error(error.message);
-    }
-
-    // 3. Decrease enrollment counter
-    if (enrollment.status === "ACTIVE" || enrollment.status === "PENDING") {
-      const { error: decrementError } = await supabaseAdmin.rpc(
-        "decrement_enrollment_count",
-        {
-          row_id: enrollment.class_id,
-        }
-      );
-      if (decrementError) {
-        serviceLogger.warn(
-          { err: decrementError, classId: enrollment.class_id },
-          "RPC decrement failed"
-        );
-      }
     }
   }
 
