@@ -28,8 +28,14 @@ export const StudentService = {
     limit: number = 50,
     search: string = ""
   ) {
-    const serviceLogger = logger.child({ service: "StudentService", method: "getAll" });
-    serviceLogger.info({ studioId, page, limit, search }, "Fetching students list");
+    const serviceLogger = logger.child({
+      service: "StudentService",
+      method: "getAll",
+    });
+    serviceLogger.info(
+      { studioId, page, limit, search },
+      "Fetching students list"
+    );
 
     const offset = (page - 1) * limit;
 
@@ -55,7 +61,10 @@ export const StudentService = {
   },
 
   async getById(id: string) {
-    const serviceLogger = logger.child({ service: "StudentService", method: "getById" });
+    const serviceLogger = logger.child({
+      service: "StudentService",
+      method: "getById",
+    });
     serviceLogger.info({ id }, "Fetching student by id");
 
     const { data, error } = await supabaseAdmin
@@ -71,8 +80,9 @@ export const StudentService = {
     return data;
   },
 
-async getByInstructor(instructorId: string) {
+  async getByInstructor(instructorId: string) {
     // Retrieve enrollments for courses taught by the instructor
+    // Fixed: Explicitly selecting instructor_id in the inner join ensures filter context is valid
     const { data, error } = await supabaseAdmin
       .from("enrollments")
       .select(
@@ -81,7 +91,8 @@ async getByInstructor(instructorId: string) {
           id, full_name, email, phone_number, profile_image_url
         ),
         class:classes!inner (
-          name
+          name,
+          instructor_id
         )
       `
       )
@@ -96,12 +107,14 @@ async getByInstructor(instructorId: string) {
     // Convert to any[] to bypass Supabase typing limitations
     (data as any[]).forEach((item) => {
       // Guard to ensure student object exists
-      const studentData = Array.isArray(item.student) ? item.student[0] : item.student;
-      
-      if (!studentData) return;
+      const studentData = Array.isArray(item.student)
+        ? item.student[0]
+        : item.student;
+
+      if (!studentData || !studentData.id) return; // Add check for ID
 
       const existing = studentMap.get(studentData.id);
-      
+
       // Handle class response as array or object
       const classData = Array.isArray(item.class) ? item.class[0] : item.class;
       const className = classData?.name;
@@ -111,6 +124,7 @@ async getByInstructor(instructorId: string) {
           existing.enrolledClass += `, ${className}`;
         }
       } else {
+        // Create new entry using a spread to detach from reference issues
         studentMap.set(studentData.id, {
           ...studentData,
           enrolledClass: className || "",
@@ -123,8 +137,14 @@ async getByInstructor(instructorId: string) {
   },
 
   async create(studioId: string, studentData: StudentPayload) {
-    const serviceLogger = logger.child({ service: "StudentService", method: "create" });
-    serviceLogger.info({ studioId, email: studentData.email }, "Creating student");
+    const serviceLogger = logger.child({
+      service: "StudentService",
+      method: "create",
+    });
+    serviceLogger.info(
+      { studioId, email: studentData.email },
+      "Creating student"
+    );
 
     const { email, full_name, phone_number, password } = studentData;
 
@@ -167,7 +187,10 @@ async getByInstructor(instructorId: string) {
    * @param studentId the student identifier
    */
   async deleteStudent(studentId: string) {
-    const serviceLogger = logger.child({ service: "StudentService", method: "deleteStudent" });
+    const serviceLogger = logger.child({
+      service: "StudentService",
+      method: "deleteStudent",
+    });
     serviceLogger.info({ studentId }, "Soft deleting student");
 
     // 1. Ensure the user exists and is a student
@@ -178,7 +201,10 @@ async getByInstructor(instructorId: string) {
       .single();
 
     if (fetchError || !user) {
-      serviceLogger.error({ err: fetchError }, "Student not found during delete");
+      serviceLogger.error(
+        { err: fetchError },
+        "Student not found during delete"
+      );
       throw new Error("Student not found");
     }
 
