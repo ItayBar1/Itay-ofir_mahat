@@ -319,7 +319,7 @@ CREATE INDEX IF NOT EXISTS idx_classes_instructor_id ON public.classes(instructo
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_student_id ON public.enrollments(student_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_class_id ON public.enrollments(class_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_unique ON public.enrollments(student_id, class_id, start_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_unique ON public.enrollments(student_id, class_id, start_date) WHERE status != 'CANCELLED';
 
 CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON public.attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_class_id ON public.attendance(class_id);
