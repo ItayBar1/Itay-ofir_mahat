@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.pending_registrations (
   email VARCHAR(255) NOT NULL,
   studio_id UUID NOT NULL REFERENCES public.studios(id) ON DELETE CASCADE,
   invitation_token VARCHAR(500), -- אם ההרשמה באה מהזמנה
-  role VARCHAR(20), -- תפקיד מהזמנה (ADMIN, INSTRUCTOR) - NULL for regular registrations
+  role VARCHAR(20) CHECK (role IS NULL OR role IN ('ADMIN', 'INSTRUCTOR', 'SUPER_ADMIN')), -- תפקיד מהזמנה (ADMIN, INSTRUCTOR, SUPER_ADMIN) - NULL for regular registrations
   validated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '1 hour'),
   used BOOLEAN DEFAULT false,

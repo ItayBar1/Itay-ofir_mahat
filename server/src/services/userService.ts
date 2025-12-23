@@ -53,7 +53,12 @@ export class UserService {
    * SECURITY: Create a pending registration with validated studio_id
    * This prevents clients from self-assigning to arbitrary studios via metadata
    */
-  static async createPendingRegistration(email: string, studioId: string, invitationToken?: string, role?: string) {
+  static async createPendingRegistration(
+    email: string, 
+    studioId: string, 
+    invitationToken?: string, 
+    role?: 'ADMIN' | 'INSTRUCTOR' | 'SUPER_ADMIN'
+  ) {
     const serviceLogger = logger.child({ service: 'UserService', method: 'createPendingRegistration' });
     serviceLogger.info({ email, studioId, role }, 'Creating pending registration with validated studio');
 

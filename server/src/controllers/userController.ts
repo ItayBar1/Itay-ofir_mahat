@@ -69,7 +69,7 @@ export class UserController {
 
     try {
       let studioId: string;
-      let invitationRole: string | undefined;
+      let invitationRole: 'ADMIN' | 'INSTRUCTOR' | 'SUPER_ADMIN' | undefined;
 
       // If there's an invitation token, validate it and get studio from there
       if (invitationToken) {
@@ -80,7 +80,7 @@ export class UserController {
         }
         
         studioId = invitation.studioId;
-        invitationRole = invitation.role;
+        invitationRole = invitation.role as 'ADMIN' | 'INSTRUCTOR' | 'SUPER_ADMIN';
       } 
       // Otherwise, validate the studio serial number
       else if (serialNumber) {
