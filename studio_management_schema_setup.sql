@@ -319,7 +319,7 @@ CREATE INDEX IF NOT EXISTS idx_classes_instructor_id ON public.classes(instructo
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_student_id ON public.enrollments(student_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_class_id ON public.enrollments(class_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_unique ON public.enrollments(student_id, class_id, start_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_unique ON public.enrollments(student_id, class_id, start_date) WHERE status != 'CANCELLED';
 
 CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON public.attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_class_id ON public.attendance(class_id);
@@ -522,6 +522,56 @@ BEGIN
     'Main Branch'::VARCHAR(255);
 END;
 $$ LANGUAGE plpgsql;
+
+----------------------------------------------------------------
+-- עדכון ותיקון מכסות (Enrollment Counters Automation)
+----------------------------------------------------------------
+
+-- 1. ניקוי פונקציות ישנות (אם קיימות) שניהלו את זה ידנית
+DROP TRIGGER IF EXISTS trigger_update_enrollment_count ON public.enrollments;
+DROP FUNCTION IF EXISTS update_class_enrollment_count();
+
+-- 2. יצירת הפונקציה לחישוב אוטומטי
+-- הפונקציה סופרת מחדש את הנרשמים "האמיתיים" (ACTIVE/PENDING) בכל שינוי
+CREATE OR REPLACE FUNCTION update_class_enrollment_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- טיפול בהוספה (INSERT) או עדכון (UPDATE)
+  -- מעדכן את הכיתה החדשה/הנוכחית (NEW)
+  IF (TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND (NEW.class_id <> OLD.class_id OR NEW.status <> OLD.status))) THEN
+    UPDATE public.classes
+    SET current_enrollment = (
+      SELECT COUNT(*)
+      FROM public.enrollments
+      WHERE class_id = NEW.class_id
+      AND status IN ('ACTIVE', 'PENDING') -- סופר רק פעילים וממתינים לתשלום
+    )
+    WHERE id = NEW.class_id;
+  END IF;
+
+  -- טיפול במחיקה (DELETE) או מעבר כיתה (UPDATE עם שינוי class_id או status)
+  -- מעדכן את הכיתה הישנה (OLD)
+  IF (TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND (NEW.class_id <> OLD.class_id OR NEW.status <> OLD.status))) THEN
+    UPDATE public.classes
+    SET current_enrollment = (
+      SELECT COUNT(*)
+      FROM public.enrollments
+      WHERE class_id = OLD.class_id
+      AND status IN ('ACTIVE', 'PENDING')
+    )
+    WHERE id = OLD.class_id;
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. יצירת הטריגר (Trigger)
+-- הטריגר מפעיל את הפונקציה בכל שינוי בטבלת enrollments
+CREATE TRIGGER trigger_update_enrollment_count
+AFTER INSERT OR UPDATE OR DELETE ON public.enrollments
+FOR EACH ROW
+EXECUTE FUNCTION update_class_enrollment_count();
 
 ----------------------------------------------------------------
 -- 5. הגדרת ROW LEVEL SECURITY (RLS)

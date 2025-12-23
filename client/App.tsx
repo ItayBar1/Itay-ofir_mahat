@@ -135,7 +135,7 @@ function App() {
         if (userRole === 'SUPER_ADMIN') return <SuperAdminDashboard />;
         if (userRole === 'ADMIN') return <Dashboard />;
         if (userRole === 'INSTRUCTOR') return <InstructorDashboard />;
-        return <StudentDashboard />;
+        return <StudentDashboard activeTab={activeTab} />;
 
       case "students":
         if (userRole === 'ADMIN') return <StudentManagement />;

@@ -22,6 +22,7 @@ export class EnrollmentService {
       { studioId, studentId, classId, status, paymentStatus },
       "Enrolling student to class"
     );
+
     // 1. Fetch course details (capacity and pricing)
     const { data: course, error: courseError } = await supabaseAdmin
       .from("classes")
@@ -60,6 +61,13 @@ export class EnrollmentService {
       throw new Error("Student is already enrolled in this course");
     }
 
+    // --- FREE COURSE LOGIC ---
+    // If price is 0 or null, force status to ACTIVE and PAID regardless of input
+    const isFree = course.price_ils === 0 || course.price_ils === null;
+    const finalStatus = isFree ? "ACTIVE" : status;
+    const finalPaymentStatus = isFree ? "PAID" : paymentStatus;
+    // -------------------------
+
     // 4. Create enrollment
     const { data: enrollment, error: enrollError } = await supabaseAdmin
       .from("enrollments")
@@ -68,8 +76,8 @@ export class EnrollmentService {
           studio_id: studioId,
           student_id: studentId,
           class_id: classId,
-          status: status,
-          payment_status: paymentStatus,
+          status: finalStatus,
+          payment_status: finalPaymentStatus,
           start_date: new Date(),
           total_amount_due: course.price_ils,
           notes: notes,
@@ -81,26 +89,6 @@ export class EnrollmentService {
     if (enrollError) {
       serviceLogger.error({ err: enrollError }, "Failed to insert enrollment");
       throw new Error(enrollError.message);
-    }
-
-    // 5. Update enrollment counters
-    if (status === "ACTIVE" || status === "PENDING") {
-      const { error: rpcError } = await supabaseAdmin.rpc(
-        "increment_enrollment_count",
-        { row_id: classId }
-      );
-
-      // Fallback if the RPC is unavailable or fails
-      if (rpcError) {
-        serviceLogger.warn(
-          { err: rpcError, classId },
-          "RPC increment failed, applying fallback"
-        );
-        await supabaseAdmin
-          .from("classes")
-          .update({ current_enrollment: course.current_enrollment + 1 })
-          .eq("id", classId);
-      }
     }
 
     // Return enrollment alongside pricing details for payment
@@ -211,23 +199,6 @@ export class EnrollmentService {
     if (error) {
       serviceLogger.error({ err: error }, "Failed to cancel enrollment");
       throw new Error(error.message);
-    }
-
-    // 3. Decrease enrollment counter
-    if (enrollment.status === "ACTIVE" || enrollment.status === "PENDING") {
-      const { error: decrementError } = await supabaseAdmin.rpc(
-        "decrement_enrollment_count",
-        {
-          row_id: enrollment.class_id,
-        }
-      );
-      if (decrementError) {
-        serviceLogger.warn(
-          { err: decrementError, classId: enrollment.class_id },
-          "RPC decrement failed"
-        );
-      }
-      // Fallback if RPC doesn't exist: fetch class -> update current - 1
     }
   }
 
