@@ -40,10 +40,13 @@ const CheckoutForm = ({
 
     if (error) {
       onError(error.message || "שגיאה בתשלום");
+      setProcessing(false);
     } else if (paymentIntent && paymentIntent.status === "succeeded") {
+      // לא מכבים את ה-processing כאן כדי לשמור על רצף חווית משתמש עד לסיום ההרשמה ב-onSuccess
       onSuccess();
+    } else {
+      setProcessing(false);
     }
-    setProcessing(false);
   };
 
   return (
@@ -75,14 +78,17 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 }) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // טעינה ראשונית של המודל
+  const [registering, setRegistering] = useState(false); // טעינה בעת ביצוע הרשמה
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   // בדיקה אם הקורס חינם
   const isFree =
     course && (course.price_ils === 0 || course.price_ils === null);
 
   useEffect(() => {
     if (isOpen && course) {
+      setRegistering(false); // איפוס סטייט הרשמה
       // אם הקורס חינם, אין צורך לייצר כוונת תשלום
       if (isFree) {
         setClientSecret(null);
@@ -122,11 +128,13 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       setClientSecret(null);
       setPaymentSuccess(false);
       setError(null);
+      setRegistering(false);
     }
   }, [isOpen, course, isFree]);
 
   const handleRegistration = async () => {
     // פונקציה המטפלת בסיום ההרשמה (גם לתשלום וגם לחינם)
+    setRegistering(true); // הפעלת מצב טעינה
     try {
       if (course) {
         await EnrollmentService.register(course.id);
@@ -135,10 +143,11 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       setTimeout(() => {
         onSuccess();
         onClose();
-      }, 3000);
+      }, 2000); // קיצרתי מעט ל-2 שניות לחוויה זריזה יותר
     } catch (err) {
       console.error("Error finalizing enrollment:", err);
       setError("ההרשמה נכשלה. אנא נסה שוב או פנה לשירות לקוחות.");
+      setRegistering(false); // כיבוי טעינה במקרה של שגיאה
     }
   };
 
@@ -152,8 +161,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
           <h3 className="font-bold">הרשמה ל{course.name}</h3>
-          <button onClick={onClose}>
-            <X size={20} />
+          <button onClick={onClose} disabled={registering}>
+            <X size={20} className={registering ? "opacity-50" : ""} />
           </button>
         </div>
 
@@ -206,9 +215,20 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
               {isFree && !loading && (
                 <button
                   onClick={handleRegistration}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                  disabled={registering}
+                  className={`w-full text-white py-3 rounded-lg font-bold transition-colors flex justify-center items-center gap-2 ${
+                    registering
+                      ? "bg-green-400 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
                 >
-                  הירשם בחינם
+                  {registering ? (
+                    <>
+                      <Loader2 className="animate-spin" /> מבצע הרשמה...
+                    </>
+                  ) : (
+                    "הירשם בחינם"
+                  )}
                 </button>
               )}
             </>
