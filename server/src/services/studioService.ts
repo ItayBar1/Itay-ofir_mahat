@@ -26,7 +26,7 @@ export class StudioService {
 
         // 2. Use database RPC to handle the entire operation in a single transaction
         // The database function uses a sequence to generate collision-free serial numbers
-        // Format: YYMMDD-NNNN where YYMMDD is date-based and NNNN is from a database sequence
+        // Format: YYMMDD-NNNNNN where YYMMDD is date-based and NNNNNN is from a database sequence
         // This is more robust than random number generation with retry logic
         const { data: result, error } = await supabaseAdmin
             .rpc('create_studio_with_transaction', {

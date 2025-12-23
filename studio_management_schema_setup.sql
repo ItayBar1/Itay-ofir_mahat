@@ -33,6 +33,8 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- יצירת sequence לסידורי מספרי סטודיו
 -- Database sequence ensures collision-free serial number generation
 -- This is more robust than random number generation with collision checking
+-- Note: Using DROP CASCADE is safe here as this script is for initial setup
+-- In production migrations, sequence alterations should be handled more carefully
 DROP SEQUENCE IF EXISTS public.studio_serial_sequence CASCADE;
 CREATE SEQUENCE public.studio_serial_sequence START 1;
 
@@ -445,11 +447,12 @@ BEGIN
   END IF;
 
   -- 2. Generate a unique serial number using database sequence
-  -- Format: YYMMDD-NNNN where YYMMDD is date-based and NNNN is sequence number
+  -- Format: YYMMDD-NNNNNN where YYMMDD is date-based and NNNNNN is sequence number
   -- Using a database sequence ensures collision-free generation without retry logic
+  -- 6-digit sequence supports up to 999,999 studios before wrapping
   v_sequence_number := nextval('public.studio_serial_sequence');
   v_date_prefix := TO_CHAR(CURRENT_DATE, 'YYMMDD');
-  v_serial_number := v_date_prefix || '-' || LPAD(v_sequence_number::TEXT, 4, '0');
+  v_serial_number := v_date_prefix || '-' || LPAD(v_sequence_number::TEXT, 6, '0');
 
   -- 3. Create Studio (all within same transaction)
   INSERT INTO public.studios (
