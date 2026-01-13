@@ -11,7 +11,7 @@ import { UserService } from "./services/api";
 // Landing & Auth (Default Exports assumed based on original code)
 const LandingPage = lazy(() => import("./components/LandingPage"));
 const ResetPassword = lazy(() =>
-  import("./components/ResetPassword").then((module) => ({
+  import("./components/auth/ResetPassword").then((module) => ({
     default: module.ResetPassword,
   }))
 );
@@ -332,10 +332,10 @@ function App() {
                 {userRole === "SUPER_ADMIN"
                   ? "מנהל פלטפורמה"
                   : userRole === "ADMIN"
-                  ? "מנהל מערכת"
-                  : userRole === "INSTRUCTOR"
-                  ? "מדריך"
-                  : "סטודנט"}
+                    ? "מנהל מערכת"
+                    : userRole === "INSTRUCTOR"
+                      ? "מדריך"
+                      : "סטודנט"}
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
